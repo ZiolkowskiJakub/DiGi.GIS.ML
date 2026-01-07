@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML" Version="4.0.2" />
+    <PackageReference Include="Microsoft.ML.FastTree" Version="4.0.2" />
+    <PackageReference Include="Microsoft.ML.ImageAnalytics" Version="4.0.2" />
+    <PackageReference Include="Microsoft.ML.LightGbm" Version="4.0.2" />
+    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.22.2" />
+    <PackageReference Include="Plotly.NET" Version="5.1.0" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.105.0" />
+  </ItemGroup>
+  <ItemGroup Label="OrtoBuildingDetectionModel">
+    <None Include="OrtoBuildingDetectionModel.mlnet">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML" Version="4.0.2" />
+    <PackageReference Include="Microsoft.ML.LightGbm" Version="4.0.2" />
+    <PackageReference Include="Plotly.NET" Version="5.1.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.6" />
+  </ItemGroup>
+  <ItemGroup Label="OrtoBuildingDetectionModel">
+    <None Include="OrtoBuildingDetectionModel.mlnet">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="DiGi.Core">
+      <HintPath>..\..\DiGi.Core\bin\DiGi.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="DiGi.Core.IO">
+      <HintPath>..\..\DiGi.Core\bin\DiGi.Core.IO.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
