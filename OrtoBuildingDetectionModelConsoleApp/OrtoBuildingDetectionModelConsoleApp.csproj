@@ -6,10 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.ML" Version="4.0.2" />
-    <PackageReference Include="Microsoft.ML.LightGbm" Version="4.0.2" />
+    <PackageReference Include="Microsoft.ML" Version="5.0.0" />
+    <PackageReference Include="Microsoft.ML.LightGbm" Version="5.0.0" />
     <PackageReference Include="Plotly.NET" Version="5.1.0" />
-    <PackageReference Include="System.Text.Json" Version="9.0.6" />
+    <PackageReference Include="System.Text.Json" Version="10.0.1" />
   </ItemGroup>
   <ItemGroup Label="OrtoBuildingDetectionModel">
     <None Include="OrtoBuildingDetectionModel.mlnet">
