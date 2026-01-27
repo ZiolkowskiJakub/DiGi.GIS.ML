@@ -9,7 +9,7 @@
     <PackageReference Include="Microsoft.ML" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.LightGbm" Version="5.0.0" />
     <PackageReference Include="Plotly.NET" Version="5.1.0" />
-    <PackageReference Include="System.Text.Json" Version="10.0.1" />
+    <PackageReference Include="System.Text.Json" Version="10.0.2" />
   </ItemGroup>
   <ItemGroup Label="OrtoBuildingDetectionModel">
     <None Include="OrtoBuildingDetectionModel.mlnet">
