@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+  </Folder>
+  <Project Path="DiGi.GIS.ML/DiGi.GIS.ML.csproj" />
+  <Project Path="OrtoBuildingDetectionModelConsoleApp/OrtoBuildingDetectionModelConsoleApp.csproj" />
+</Solution>
