@@ -5,13 +5,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.5" />
     <PackageReference Include="Microsoft.ML" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.FastTree" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.ImageAnalytics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.LightGbm" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.0" />
     <PackageReference Include="Plotly.NET" Version="5.1.0" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.105.2" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.106.0" />
   </ItemGroup>
   <ItemGroup Label="OrtoBuildingDetectionModel">
     <None Include="OrtoBuildingDetectionModel.mlnet">
