@@ -18,6 +18,7 @@ namespace OrtoBuildingDetectionModelConsoleApp
         /// <param name="inputDataFilePath">Path to the data file for training.</param>
         /// <param name="separatorChar">Separator character for delimited training file.</param>
         /// <param name="hasHeader">Boolean if training file has a header.</param>
+        /// <param name="allowQuoting">Boolean if quoting is allowed in the training file.</param>
         public static void Train(string outputModelPath, string inputDataFilePath = RetrainFilePath, char separatorChar = RetrainSeparatorChar, bool hasHeader = RetrainHasHeader, bool allowQuoting = RetrainAllowQuoting)
         {
             var mlContext = new MLContext();
@@ -34,6 +35,7 @@ namespace OrtoBuildingDetectionModelConsoleApp
         /// <param name="inputDataFilePath">Path to the data file for training.</param>
         /// <param name="separatorChar">Separator character for delimited training file.</param>
         /// <param name="hasHeader">Boolean if training file has a header.</param>
+        /// <param name="allowQuoting">Boolean if quoting is allowed in the training file.</param>
         /// <returns>IDataView with loaded training data.</returns>
         public static IDataView LoadIDataViewFromFile(MLContext mlContext, string inputDataFilePath, char separatorChar, bool hasHeader, bool allowQuoting)
         {

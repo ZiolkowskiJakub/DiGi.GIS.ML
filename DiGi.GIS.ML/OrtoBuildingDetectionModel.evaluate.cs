@@ -65,7 +65,6 @@ namespace DiGi_GIS_ML
         /// <param name="trainData">IDataView used to train the model.</param>
         /// <param name="model">Model used for predictions.</param>
         /// <param name="labelColumnName">Name of the predicted label column.</param>
-        /// <param name="folderPath">Folder path to save the RegressionChart.html file into.</param>
         public static void PlotRSquaredValues(IDataView trainData, ITransformer model, string labelColumnName, string folderPath)
         {
             // Number of rows to display in charts.
