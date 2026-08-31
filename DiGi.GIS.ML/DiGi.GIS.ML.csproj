@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -19,5 +19,25 @@
     <None Include="OrtoBuildingDetectionModel.mlnet">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="DiGi.Core">
+      <HintPath>..\..\DiGi.Core\bin\DiGi.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="DiGi.Core.IO">
+      <HintPath>..\..\DiGi.Core\bin\DiGi.Core.IO.dll</HintPath>
+    </Reference>
+    <Reference Include="DiGi.GIS">
+      <HintPath>..\..\DiGi.GIS\bin\DiGi.GIS.dll</HintPath>
+    </Reference>
+    <Reference Include="DiGi.GIS.IO">
+      <HintPath>..\..\DiGi.GIS.IO\bin\DiGi.GIS.IO.dll</HintPath>
+    </Reference>
+    <Reference Include="DiGi.Unit">
+      <HintPath>..\..\DiGi.Unit\bin\DiGi.Unit.dll</HintPath>
+    </Reference>
+    <Reference Include="DiGi.Unit.IO">
+      <HintPath>..\..\DiGi.Unit\bin\DiGi.Unit.IO.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>
