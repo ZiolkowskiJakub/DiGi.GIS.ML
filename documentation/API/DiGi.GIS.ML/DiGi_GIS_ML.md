@@ -1919,6 +1919,19 @@ public float Prediction_Confidence_2025 { get; set; }
 #### Property Value
 [System\.Single](https://learn.microsoft.com/en-us/dotnet/api/system.single 'System\.Single')
 
+<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput.Reference'></a>
+
+## OrtoBuildingDetectionModel\.ModelInput\.Reference Property
+
+Gets or sets the Reference\.
+
+```csharp
+public string Reference { get; set; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
 <a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput.Storeys'></a>
 
 ## OrtoBuildingDetectionModel\.ModelInput\.Storeys Property
