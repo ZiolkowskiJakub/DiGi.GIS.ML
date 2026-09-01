@@ -59,6 +59,7 @@ namespace DiGi.GIS.ML
             }
 
             columns.AddRange(GIS.IO.Create.Columns_PredictionYearBuilt(range_Years));
+            columns.AddRange(GIS.IO.Create.Columns_Population(range_Years));
 
             return columns;
         }
