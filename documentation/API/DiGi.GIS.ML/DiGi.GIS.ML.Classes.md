@@ -29,43 +29,55 @@ public YearBuiltPredictor();
 ```
 ### Methods
 
-<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumns(DiGi.Core.Classes.Range_int_)'></a>
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumns(DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_)'></a>
 
-## YearBuiltPredictor\.InputColumns\(Range\<int\>\) Method
+## YearBuiltPredictor\.InputColumns\(Range\<int\>, IEnumerable\<double\>\) Method
 
-Retrieves the list of columns permitted as input features for the year built prediction model across the specified range of years\.
+Retrieves the list of columns permitted as input features for the year built prediction model across the specified range of years and radial radiuses\.
 
 ```csharp
-public static System.Collections.Generic.List<DiGi.Core.IO.Table.Classes.Column> InputColumns(DiGi.Core.Classes.Range<int>? years=null);
+public static System.Collections.Generic.List<DiGi.Core.IO.Table.Classes.Column> InputColumns(DiGi.Core.Classes.Range<int>? years=null, System.Collections.Generic.IEnumerable<double>? radiuses=null);
 ```
 #### Parameters
 
-<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumns(DiGi.Core.Classes.Range_int_).years'></a>
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumns(DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).years'></a>
 
 `years` [DiGi\.Core\.Classes\.Range&lt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')
 
 The range of years for temporal features\. Defaults to 2008\.\.2025 when null\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumns(DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).radiuses'></a>
+
+`radiuses` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The collection of radiuses for radial ratio features\. Defaults to 200, 400, 600, 1000 when null\.
 
 #### Returns
 [System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[DiGi\.Core\.IO\.Table\.Classes\.Column](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.column 'DiGi\.Core\.IO\.Table\.Classes\.Column')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  
 A list of [DiGi\.Core\.IO\.Table\.Classes\.Column](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.column 'DiGi\.Core\.IO\.Table\.Classes\.Column') instances representing the allowed input features\.
 
-<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumnUniqueIds(DiGi.Core.Classes.Range_int_)'></a>
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumnUniqueIds(DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_)'></a>
 
-## YearBuiltPredictor\.InputColumnUniqueIds\(Range\<int\>\) Method
+## YearBuiltPredictor\.InputColumnUniqueIds\(Range\<int\>, IEnumerable\<double\>\) Method
 
-Retrieves the unique identifiers of the columns permitted as input features for the year built prediction model across the specified range of years\.
+Retrieves the unique identifiers of the columns permitted as input features for the year built prediction model across the specified range of years and radial radiuses\.
 
 ```csharp
-public static System.Collections.Generic.List<string> InputColumnUniqueIds(DiGi.Core.Classes.Range<int>? years=null);
+public static System.Collections.Generic.List<string> InputColumnUniqueIds(DiGi.Core.Classes.Range<int>? years=null, System.Collections.Generic.IEnumerable<double>? radiuses=null);
 ```
 #### Parameters
 
-<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumnUniqueIds(DiGi.Core.Classes.Range_int_).years'></a>
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumnUniqueIds(DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).years'></a>
 
 `years` [DiGi\.Core\.Classes\.Range&lt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')
 
 The range of years for temporal features\. Defaults to 2008\.\.2025 when null\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.InputColumnUniqueIds(DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).radiuses'></a>
+
+`radiuses` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The collection of radiuses for radial ratio features\. Defaults to 200, 400, 600, 1000 when null\.
 
 #### Returns
 [System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  

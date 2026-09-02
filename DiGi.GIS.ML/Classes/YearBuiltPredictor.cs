@@ -29,24 +29,26 @@ namespace DiGi.GIS.ML.Classes
         }
 
         /// <summary>
-        /// Retrieves the list of columns permitted as input features for the year built prediction model across the specified range of years.
+        /// Retrieves the list of columns permitted as input features for the year built prediction model across the specified range of years and radial radiuses.
         /// </summary>
         /// <param name="years">The range of years for temporal features. Defaults to 2008..2025 when null.</param>
+        /// <param name="radiuses">The collection of radiuses for radial ratio features. Defaults to 200, 400, 600, 1000 when null.</param>
         /// <returns>A list of <see cref="Column"/> instances representing the allowed input features.</returns>
-        public static List<Column> InputColumns(Range<int>? years = null)
+        public static List<Column> InputColumns(Range<int>? years = null, IEnumerable<double>? radiuses = null)
         {
-            return IO.Query.YearBuiltPredictionInputColumns(years);
+            return IO.Query.YearBuiltPredictionInputColumns(years, radiuses);
         }
 
         /// <summary>
-        /// Retrieves the unique identifiers of the columns permitted as input features for the year built prediction model across the specified range of years.
+        /// Retrieves the unique identifiers of the columns permitted as input features for the year built prediction model across the specified range of years and radial radiuses.
         /// </summary>
         /// <param name="years">The range of years for temporal features. Defaults to 2008..2025 when null.</param>
+        /// <param name="radiuses">The collection of radiuses for radial ratio features. Defaults to 200, 400, 600, 1000 when null.</param>
         /// <returns>A list of distinct unique identifiers for the input feature columns.</returns>
-        public static List<string> InputColumnUniqueIds(Range<int>? years = null)
+        public static List<string> InputColumnUniqueIds(Range<int>? years = null, IEnumerable<double>? radiuses = null)
         {
             List<string> uniqueIds = [];
-            List<Column> columns = InputColumns(years);
+            List<Column> columns = InputColumns(years, radiuses);
             if (columns is null)
             {
                 return uniqueIds;
