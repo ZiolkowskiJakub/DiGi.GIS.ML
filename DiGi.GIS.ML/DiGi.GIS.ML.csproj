@@ -1,6 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- The workspace-standard output layout: every DiGi library resolves as ..\..\<Repo>\bin\<Assembly>.dll.
+         Without these three a consumer has to name a configuration and a target framework in its HintPath, which
+         then links the Release binary from a Debug build and resolves to nothing at all on a workspace that has
+         only ever been built Debug. -->
+    <OutputPath>..\bin\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<GenerateDocumentationFile>true</GenerateDocumentationFile>
