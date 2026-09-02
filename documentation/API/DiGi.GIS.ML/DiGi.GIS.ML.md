@@ -183,9 +183,13 @@ The names of the columns that never vary, in column order\. Empty when every col
 
 ## Query\.PredictedYearBuilts\(this Table\) Method
 
-Scores building feature rows using the machine learning year built prediction model\.
+Scores building feature rows into a predicted construction year\.
 
-Binds input features by column unique identifier first, with fallback to display names to support both database and tabular formats.
+Every feature is read by the column it was trained against, resolved once for the whole table rather than per row. Resolution is by stored column slug first - the identifier the database and the WebAPI address a column by - and by display name second, so a table that came from a file rather than from the database still binds.
+
+A column the table does not carry reads as the type default, which is deliberate and has to stay that way: the training table is materialised the same way, so a feature absent at training and a feature absent at inference look identical to the model. Change one and the model sees a distribution it was never fitted on.
+
+The generated [ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelInput') is the authority for this list. It is regenerated whenever the model is retrained, and the feature contract fact in DiGi.GIS.ML.xUnit fails if this and the allow-list stop agreeing.
 
 ```csharp
 public static DiGi.Core.IO.Table.Classes.Table? PredictedYearBuilts(this DiGi.Core.IO.Table.Classes.Table? table);
@@ -200,7 +204,7 @@ The table containing building features, including a reference column\.
 
 #### Returns
 [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')  
-A new table containing the reference and predicted year built columns, or null if the input table is null or lacks a reference column\.
+A new table carrying the reference and predicted year built columns, or null if the input table is null or lacks a reference column\.
 
 <a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisSystem.Collections.Generic.IEnumerable_DiGi.GIS.Classes.YearBuiltData_)'></a>
 

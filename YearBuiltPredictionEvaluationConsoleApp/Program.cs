@@ -105,8 +105,8 @@ Dictionary<string, List<double?>> predictors = new()
     ["first detection year"] = years_FirstDetection,
 };
 
-// The incumbent is scored through the deployed inference path, so the number describes what it would
-// actually produce today rather than what it once reported on a table that no longer exists.
+// Scored through Query.PredictedYearBuilts - whatever model is installed as OrtoBuildingDetectionModel.mlnet.
+// This row therefore measures the deployed path end to end, binding included, not a particular model.
 Table? table_Incumbent = table.PredictedYearBuilts();
 if (table_Incumbent is not null)
 {
@@ -121,14 +121,14 @@ if (table_Incumbent is not null)
         }
     }
 
-    List<double?> years_Incumbent = [];
+    List<double?> years_Deployed = [];
     foreach (string? reference in references)
     {
-        years_Incumbent.Add(reference is not null && years_ByReference.TryGetValue(reference, out double year) ? year : null);
+        years_Deployed.Add(reference is not null && years_ByReference.TryGetValue(reference, out double year) ? year : null);
     }
 
-    predictors["incumbent (deployed path)"] = years_Incumbent;
-    Console.WriteLine($"Incumbent scored {years_ByReference.Count} rows");
+    predictors["deployed path"] = years_Deployed;
+    Console.WriteLine($"Deployed path scored {years_ByReference.Count} rows");
 }
 
 if (!string.IsNullOrWhiteSpace(path_Model))

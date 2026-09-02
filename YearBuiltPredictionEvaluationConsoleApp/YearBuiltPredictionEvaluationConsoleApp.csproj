@@ -47,4 +47,8 @@
 		</Reference>
 	</ItemGroup>
 
+	<ItemGroup Label="Transitive dependency of Microsoft.ML.FastTree, which DiGi.GIS.ML pulls in by HintPath">
+		<PackageReference Include="Microsoft.ML.OneDal" Version="0.23.0" />
+	</ItemGroup>
+
 </Project>
