@@ -1,0 +1,101 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net10.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<OutputPath>..\bin\</OutputPath>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+		<Nullable>enable</Nullable>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!-- Redirect AssemblyAttributes.cs so each project has its own -->
+		<TargetFrameworkMonikerAssemblyAttributesPath>$(IntermediateOutputPath)$(MSBuildProjectName).AssemblyAttributes.cs</TargetFrameworkMonikerAssemblyAttributesPath>
+		<!-- Avoid duplicate TargetFrameworkAttribute -->
+		<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+	</PropertyGroup>
+	<ItemGroup>
+		<!-- Prevent duplicate 'Compile' inclusion of the generated AssemblyAttributes.cs -->
+		<Compile Remove="$(IntermediateOutputPath)$(MSBuildProjectName).AssemblyAttributes.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\DiGi.GIS.ML\DiGi.GIS.ML.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup Label="A deployed host re-declares the NuGet closure of everything it loads, because a HintPath reference carries none of its own">
+		<!-- Transitive dependencies of DiGi.GIS.WebAPI and DiGi.GIS.PostgreSQL -->
+		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+		<PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+		<PackageReference Include="NetTopologySuite" Version="2.6.0" />
+		<PackageReference Include="Npgsql" Version="10.0.2" />
+		<PackageReference Include="ProjNET4GeoAPI" Version="1.4.1" />
+		<PackageReference Include="QuikGraph" Version="2.5.0" />
+		<PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+	</ItemGroup>
+
+	<ItemGroup Label="DiGi.GIS.ML reaches these by HintPath, which is opaque to the project reference above, so they do not flow here on their own">
+		<Reference Include="DiGi.Core">
+			<HintPath>..\..\DiGi.Core\bin\DiGi.Core.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.Core.IO">
+			<HintPath>..\..\DiGi.Core\bin\DiGi.Core.IO.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.GIS">
+			<HintPath>..\..\DiGi.GIS\bin\DiGi.GIS.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.GIS.IO">
+			<HintPath>..\..\DiGi.GIS.IO\bin\DiGi.GIS.IO.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.Unit">
+			<HintPath>..\..\DiGi.Unit\bin\DiGi.Unit.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.Unit.IO">
+			<HintPath>..\..\DiGi.Unit\bin\DiGi.Unit.IO.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="DiGi.GIS.PostgreSQL">
+			<HintPath>..\..\DiGi.GIS.PostgreSQL\bin\DiGi.GIS.PostgreSQL.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.GIS.WebAPI">
+			<HintPath>..\..\DiGi.GIS.WebAPI\bin\DiGi.GIS.WebAPI.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.PostgreSQL.Table">
+			<HintPath>..\..\DiGi.GIS.PostgreSQL\bin\DiGi.PostgreSQL.Table.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.Serilog">
+			<HintPath>..\..\DiGi.Serilog\bin\DiGi.Serilog.dll</HintPath>
+		</Reference>
+		<Reference Include="DiGi.WebAPI">
+			<HintPath>..\..\DiGi.WebAPI\bin\DiGi.WebAPI.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\files\**" LinkBase="files" />
+	</ItemGroup>
+
+	<Target Name="CopyFiles" AfterTargets="Build">
+		<ItemGroup>
+			<FilesToCopy Include="..\files\**\*.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutDir)%(RecursiveDir)" SkipUnchangedFiles="true" Condition="Exists('..\files')" />
+	</Target>
+
+	<Target Name="CopyUserFiles" AfterTargets="CopyFiles">
+		<ItemGroup>
+			<UserFilesToCopy Include="..\user files\**\*.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(UserFilesToCopy)" DestinationFolder="$(OutDir)%(RecursiveDir)" SkipUnchangedFiles="true" Condition="Exists('..\user files')" />
+	</Target>
+
+</Project>

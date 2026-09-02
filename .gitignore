@@ -416,3 +416,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Machine-specific and secret runtime assets, deployed by the CopyUserFiles target
+[Uu]ser [Ff]iles/
