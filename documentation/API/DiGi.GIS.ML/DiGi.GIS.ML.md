@@ -185,7 +185,7 @@ The names of the columns that never vary, in column order\. Empty when every col
 
 Scores building feature rows into a predicted construction year\.
 
-Every feature is read by the column it was trained against, resolved once for the whole table rather than per row. Resolution is by stored column slug first - the identifier the database and the WebAPI address a column by - and by display name second, so a table that came from a file rather than from the database still binds.
+Every feature is read by the column it was trained against, and every one of those columns is resolved once for the whole table before a single row is read. Resolution is by stored column slug first - the identifier the database and the WebAPI address a column by - and by display name second, so a table that came from a file rather than from the database still binds.
 
 A column the table does not carry reads as the type default, which is deliberate and has to stay that way: the training table is materialised the same way, so a feature absent at training and a feature absent at inference look identical to the model. Change one and the model sees a distribution it was never fitted on.
 

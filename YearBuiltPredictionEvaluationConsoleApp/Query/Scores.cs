@@ -29,9 +29,16 @@ namespace DiGi.GIS.ML.EvaluationConsoleApp
 
             ITransformer transformer = mLContext.Model.Load(path_Model!, out DataViewSchema dataViewSchema_Input);
 
-            string[] names_Header = File.ReadLines(path_Table!).GetEnumerator() is IEnumerator<string> enumerator && enumerator.MoveNext()
-                ? enumerator.Current.Split('\t')
-                : [];
+            // Read through a using rather than a bare enumerator: the loader opens the same file again
+            // below, and an undisposed lazy reader holds the handle until it is collected.
+            string[] names_Header = [];
+            using (IEnumerator<string> enumerator = File.ReadLines(path_Table!).GetEnumerator())
+            {
+                if (enumerator.MoveNext())
+                {
+                    names_Header = enumerator.Current.Split('\t');
+                }
+            }
 
             if (names_Header.Length == 0)
             {

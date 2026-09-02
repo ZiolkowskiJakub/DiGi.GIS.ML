@@ -109,8 +109,17 @@ foreach (int countyId in countyIds)
     }
 
     List<string> references = [.. years_County.Keys];
+
+    // A reference is unique per county, not nationally, so two counties can legitimately carry the
+    // same one. The label table is keyed by reference alone, which would silently keep whichever
+    // county was read last - a wrong label rather than a missing one. Report it instead.
     foreach (KeyValuePair<string, short> keyValuePair in years_County)
     {
+        if (years_ByReference.TryGetValue(keyValuePair.Key, out short year_Existing) && year_Existing != keyValuePair.Value)
+        {
+            Console.WriteLine($"  [WARN] reference {keyValuePair.Key} already carried label {year_Existing} from an earlier county and carries {keyValuePair.Value} here - the later one wins");
+        }
+
         years_ByReference[keyValuePair.Key] = keyValuePair.Value;
     }
 

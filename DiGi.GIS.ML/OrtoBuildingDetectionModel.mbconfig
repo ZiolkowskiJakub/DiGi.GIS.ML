@@ -8,7 +8,7 @@
     "KeepPunctuations": false,
     "AllowQuoting": false,
     "Type": "TabularFile",
-    "FilePath": "C:\\Users\\jakub\\GitHub\\DigiProject\\DiGi.Test\\user files\\reports\\training_all.tsv",
+    "FilePath": "..\\..\\DiGi.Test\\user files\\reports\\training_all.tsv",
     "Delimiter": "\t",
     "DecimalMarker": ".",
     "HasHeader": true,
