@@ -7,4 +7,5 @@
 | [DiGi\.GIS\.ML](DiGi.GIS.ML.md 'DiGi\.GIS\.ML') | |
 | [DiGi\.GIS\.ML\.Classes](DiGi.GIS.ML.Classes.md 'DiGi\.GIS\.ML\.Classes') | |
 | [DiGi\.GIS\.ML\.Constants](DiGi.GIS.ML.Constants.md 'DiGi\.GIS\.ML\.Constants') | |
+| [DiGi\.GIS\.ML\.Interfaces](DiGi.GIS.ML.Interfaces.md 'DiGi\.GIS\.ML\.Interfaces') | |
 | [DiGi\_GIS\_ML](DiGi_GIS_ML.md 'DiGi\_GIS\_ML') | |

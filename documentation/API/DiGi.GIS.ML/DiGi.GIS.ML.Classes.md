@@ -3,6 +3,187 @@
 ## DiGi\.GIS\.ML\.Classes Namespace
 ### Classes
 
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult'></a>
+
+## YearBuiltPredictionAccuracyResult Class
+
+Reports how closely one predictor reproduced the known construction years of a set of buildings\.
+
+Carries the three measures together on purpose. R squared alone is misleading on this label: it is measured against the variance of the holdout, and 84 percent of these rows carry the same year, so a predictor can score well while being wrong in years. The mean absolute error says how far out it is in the unit anyone cares about, and the root mean squared error says whether the misses are many small ones or a few large ones.
+
+The name of the predictor and the name of the split are both carried, because a number is only comparable against another measured the same way - a random holdout and a holdout grouped by subdivision answer different questions of the same model.
+
+```csharp
+public class YearBuiltPredictionAccuracyResult : DiGi.Core.Classes.SerializableResult, DiGi.GIS.ML.Interfaces.IGISMLSerializableObject, DiGi.GIS.ML.Interfaces.IGISMLObject, DiGi.Core.Interfaces.IObject, DiGi.Core.Interfaces.ISerializableObject, DiGi.Core.Interfaces.ICloneableObject<DiGi.Core.Interfaces.ISerializableObject>, DiGi.Core.Interfaces.ICloneableObject
+```
+
+Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') → [DiGi\.Core\.Classes\.Object](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.object 'DiGi\.Core\.Classes\.Object') → [DiGi\.Core\.Classes\.SerializableObject](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.serializableobject 'DiGi\.Core\.Classes\.SerializableObject') → [DiGi\.Core\.Classes\.SerializableResult](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.serializableresult 'DiGi\.Core\.Classes\.SerializableResult') → YearBuiltPredictionAccuracyResult
+
+Implements [IGISMLSerializableObject](DiGi.GIS.ML.Interfaces.md#DiGi.GIS.ML.Interfaces.IGISMLSerializableObject 'DiGi\.GIS\.ML\.Interfaces\.IGISMLSerializableObject'), [IGISMLObject](DiGi.GIS.ML.Interfaces.md#DiGi.GIS.ML.Interfaces.IGISMLObject 'DiGi\.GIS\.ML\.Interfaces\.IGISMLObject'), [DiGi\.Core\.Interfaces\.IObject](https://learn.microsoft.com/en-us/dotnet/api/digi.core.interfaces.iobject 'DiGi\.Core\.Interfaces\.IObject'), [DiGi\.Core\.Interfaces\.ISerializableObject](https://learn.microsoft.com/en-us/dotnet/api/digi.core.interfaces.iserializableobject 'DiGi\.Core\.Interfaces\.ISerializableObject'), [DiGi\.Core\.Interfaces\.ICloneableObject&lt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.interfaces.icloneableobject-1 'DiGi\.Core\.Interfaces\.ICloneableObject\`1')[DiGi\.Core\.Interfaces\.ISerializableObject](https://learn.microsoft.com/en-us/dotnet/api/digi.core.interfaces.iserializableobject 'DiGi\.Core\.Interfaces\.ISerializableObject')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.interfaces.icloneableobject-1 'DiGi\.Core\.Interfaces\.ICloneableObject\`1'), [DiGi\.Core\.Interfaces\.ICloneableObject](https://learn.microsoft.com/en-us/dotnet/api/digi.core.interfaces.icloneableobject 'DiGi\.Core\.Interfaces\.ICloneableObject')
+### Constructors
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult)'></a>
+
+## YearBuiltPredictionAccuracyResult\(YearBuiltPredictionAccuracyResult\) Constructor
+
+Initializes a new instance of the [YearBuiltPredictionAccuracyResult](DiGi.GIS.ML.Classes.md#DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult 'DiGi\.GIS\.ML\.Classes\.YearBuiltPredictionAccuracyResult') class by copying values from an existing instance\.
+
+```csharp
+public YearBuiltPredictionAccuracyResult(DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult? yearBuiltPredictionAccuracyResult);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult).yearBuiltPredictionAccuracyResult'></a>
+
+`yearBuiltPredictionAccuracyResult` [YearBuiltPredictionAccuracyResult](DiGi.GIS.ML.Classes.md#DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult 'DiGi\.GIS\.ML\.Classes\.YearBuiltPredictionAccuracyResult')
+
+The source to copy from\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(string,string,int,double,double,double)'></a>
+
+## YearBuiltPredictionAccuracyResult\(string, string, int, double, double, double\) Constructor
+
+Initializes a new instance of the [YearBuiltPredictionAccuracyResult](DiGi.GIS.ML.Classes.md#DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult 'DiGi\.GIS\.ML\.Classes\.YearBuiltPredictionAccuracyResult') class\.
+
+Assigns only. The measures are computed by `Create.YearBuiltPredictionAccuracyResult`, which is where a caller without pre-computed values goes.
+
+```csharp
+public YearBuiltPredictionAccuracyResult(string? name, string? splitName, int count, double meanAbsoluteError, double rootMeanSquaredError, double rSquared);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(string,string,int,double,double,double).name'></a>
+
+`name` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The predictor these measures describe\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(string,string,int,double,double,double).splitName'></a>
+
+`splitName` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The holdout the measures were taken on\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(string,string,int,double,double,double).count'></a>
+
+`count` [System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
+
+The number of scored buildings\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(string,string,int,double,double,double).meanAbsoluteError'></a>
+
+`meanAbsoluteError` [System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+The mean absolute error, in years\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(string,string,int,double,double,double).rootMeanSquaredError'></a>
+
+`rootMeanSquaredError` [System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+The root mean squared error, in years\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(string,string,int,double,double,double).rSquared'></a>
+
+`rSquared` [System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+The coefficient of determination\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(System.Text.Json.Nodes.JsonObject)'></a>
+
+## YearBuiltPredictionAccuracyResult\(JsonObject\) Constructor
+
+Initializes a new instance of the [YearBuiltPredictionAccuracyResult](DiGi.GIS.ML.Classes.md#DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult 'DiGi\.GIS\.ML\.Classes\.YearBuiltPredictionAccuracyResult') class from a JSON object\.
+
+```csharp
+public YearBuiltPredictionAccuracyResult(System.Text.Json.Nodes.JsonObject? jsonObject);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.YearBuiltPredictionAccuracyResult(System.Text.Json.Nodes.JsonObject).jsonObject'></a>
+
+`jsonObject` [System\.Text\.Json\.Nodes\.JsonObject](https://learn.microsoft.com/en-us/dotnet/api/system.text.json.nodes.jsonobject 'System\.Text\.Json\.Nodes\.JsonObject')
+
+The [System\.Text\.Json\.Nodes\.JsonObject](https://learn.microsoft.com/en-us/dotnet/api/system.text.json.nodes.jsonobject 'System\.Text\.Json\.Nodes\.JsonObject') containing the data\.
+### Properties
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.Count'></a>
+
+## YearBuiltPredictionAccuracyResult\.Count Property
+
+Gets the number of scored buildings\.
+
+```csharp
+public int Count { get; }
+```
+
+#### Property Value
+[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.MeanAbsoluteError'></a>
+
+## YearBuiltPredictionAccuracyResult\.MeanAbsoluteError Property
+
+Gets the mean absolute error, in years\.
+
+```csharp
+public double MeanAbsoluteError { get; }
+```
+
+#### Property Value
+[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.Name'></a>
+
+## YearBuiltPredictionAccuracyResult\.Name Property
+
+Gets the predictor these measures describe\.
+
+```csharp
+public string? Name { get; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.RootMeanSquaredError'></a>
+
+## YearBuiltPredictionAccuracyResult\.RootMeanSquaredError Property
+
+Gets the root mean squared error, in years\.
+
+```csharp
+public double RootMeanSquaredError { get; }
+```
+
+#### Property Value
+[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.RSquared'></a>
+
+## YearBuiltPredictionAccuracyResult\.RSquared Property
+
+Gets the coefficient of determination\.
+
+```csharp
+public double RSquared { get; }
+```
+
+#### Property Value
+[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult.SplitName'></a>
+
+## YearBuiltPredictionAccuracyResult\.SplitName Property
+
+Gets the holdout the measures were taken on\.
+
+```csharp
+public string? SplitName { get; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
 <a name='DiGi.GIS.ML.Classes.YearBuiltPredictor'></a>
 
 ## YearBuiltPredictor Class

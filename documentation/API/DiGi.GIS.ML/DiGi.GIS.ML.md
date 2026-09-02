@@ -14,6 +14,49 @@ public static class Create
 Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') → Create
 ### Methods
 
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionAccuracyResult(string,string,System.Collections.Generic.IEnumerable_System.Nullable_double__,System.Collections.Generic.IEnumerable_System.Nullable_double__)'></a>
+
+## Create\.YearBuiltPredictionAccuracyResult\(string, string, IEnumerable\<Nullable\<double\>\>, IEnumerable\<Nullable\<double\>\>\) Method
+
+Measures how closely a set of predicted construction years reproduced the known ones\.
+
+The two sequences are read in step and a pair is used only when both sides have a value, so a predictor that declines to answer for some buildings is measured on what it did answer rather than being charged a default. The count on the result says how many pairs that was, which is what makes two results comparable.
+
+R squared is computed against the variance of the supplied known years rather than of the whole dataset, so it describes this holdout and no other. It comes back as [System\.Double\.NaN](https://learn.microsoft.com/en-us/dotnet/api/system.double.nan 'System\.Double\.NaN') when every known year in the holdout is the same value, because there is then no variance to explain and any number would be an artefact.
+
+```csharp
+public static DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult? YearBuiltPredictionAccuracyResult(string? name, string? splitName, System.Collections.Generic.IEnumerable<System.Nullable<double>>? years, System.Collections.Generic.IEnumerable<System.Nullable<double>>? years_Predicted);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionAccuracyResult(string,string,System.Collections.Generic.IEnumerable_System.Nullable_double__,System.Collections.Generic.IEnumerable_System.Nullable_double__).name'></a>
+
+`name` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The predictor these measures describe\.
+
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionAccuracyResult(string,string,System.Collections.Generic.IEnumerable_System.Nullable_double__,System.Collections.Generic.IEnumerable_System.Nullable_double__).splitName'></a>
+
+`splitName` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The holdout the measures are being taken on\.
+
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionAccuracyResult(string,string,System.Collections.Generic.IEnumerable_System.Nullable_double__,System.Collections.Generic.IEnumerable_System.Nullable_double__).years'></a>
+
+`years` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[System\.Nullable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The known construction years\.
+
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionAccuracyResult(string,string,System.Collections.Generic.IEnumerable_System.Nullable_double__,System.Collections.Generic.IEnumerable_System.Nullable_double__).years_Predicted'></a>
+
+`years_Predicted` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[System\.Nullable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The predicted construction years, in the same order\.
+
+#### Returns
+[YearBuiltPredictionAccuracyResult](DiGi.GIS.ML.Classes.md#DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult 'DiGi\.GIS\.ML\.Classes\.YearBuiltPredictionAccuracyResult')  
+The measures, or null when there is no pair to measure\.
+
 <a name='DiGi.GIS.ML.Create.YearBuiltPredictionTrainingTable(thisDiGi.Core.IO.Table.Classes.Table,System.Collections.Generic.IDictionary_string,short_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_)'></a>
 
 ## Create\.YearBuiltPredictionTrainingTable\(this Table, IDictionary\<string,short\>, Range\<int\>, IEnumerable\<double\>\) Method
