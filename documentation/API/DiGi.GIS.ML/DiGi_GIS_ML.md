@@ -46,54 +46,6 @@ public static Microsoft.ML.IEstimator<Microsoft.ML.ITransformer> BuildPipeline(M
 #### Returns
 [Microsoft\.ML\.IEstimator&lt;](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.iestimator-1 'Microsoft\.ML\.IEstimator\`1')[Microsoft\.ML\.ITransformer](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.itransformer 'Microsoft\.ML\.ITransformer')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.iestimator-1 'Microsoft\.ML\.IEstimator\`1')
 
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.CalculatePFI(Microsoft.ML.MLContext,Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string)'></a>
-
-## OrtoBuildingDetectionModel\.CalculatePFI\(MLContext, IDataView, ITransformer, string\) Method
-
-Permutation feature importance \(PFI\) is a technique to determine the importance 
-of features in a trained machine learning model\. PFI works by taking a labeled dataset, 
-choosing a feature, and permuting the values for that feature across all the examples, 
-so that each example now has a random value for the feature and the original values for all other features\.
-The evaluation metric \(e\.g\. R\-squared\) is then calculated for this modified dataset, 
-and the change in the evaluation metric from the original dataset is computed\. 
-The larger the change in the evaluation metric, the more important the feature is to the model\.
-
-PFI typically takes a long time to compute, as the evaluation metric is calculated 
-many times to determine the importance of each feature\.
-
-```csharp
-public static System.Collections.Generic.List<System.Tuple<string,double>> CalculatePFI(Microsoft.ML.MLContext mlContext, Microsoft.ML.IDataView trainData, Microsoft.ML.ITransformer model, string labelColumnName);
-```
-#### Parameters
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.CalculatePFI(Microsoft.ML.MLContext,Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string).mlContext'></a>
-
-`mlContext` [Microsoft\.ML\.MLContext](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.mlcontext 'Microsoft\.ML\.MLContext')
-
-The common context for all ML\.NET operations\.
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.CalculatePFI(Microsoft.ML.MLContext,Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string).trainData'></a>
-
-`trainData` [Microsoft\.ML\.IDataView](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.idataview 'Microsoft\.ML\.IDataView')
-
-IDataView used to evaluate the model\.
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.CalculatePFI(Microsoft.ML.MLContext,Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string).model'></a>
-
-`model` [Microsoft\.ML\.ITransformer](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.itransformer 'Microsoft\.ML\.ITransformer')
-
-Model to evaluate\.
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.CalculatePFI(Microsoft.ML.MLContext,Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string).labelColumnName'></a>
-
-`labelColumnName` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-Label column being predicted\.
-
-#### Returns
-[System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.Tuple&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.tuple-2 'System\.Tuple\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.tuple-2 'System\.Tuple\`2')[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.tuple-2 'System\.Tuple\`2')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  
-A list of each feature and its importance\.
-
 <a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.LoadIDataViewFromFile(Microsoft.ML.MLContext,string,char,bool,bool)'></a>
 
 ## OrtoBuildingDetectionModel\.LoadIDataViewFromFile\(MLContext, string, char, bool, bool\) Method
@@ -138,47 +90,6 @@ Boolean if quoting is allowed in the training file\.
 #### Returns
 [Microsoft\.ML\.IDataView](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.idataview 'Microsoft\.ML\.IDataView')  
 IDataView with loaded training data\.
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.PlotRSquaredValues(Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string,string)'></a>
-
-## OrtoBuildingDetectionModel\.PlotRSquaredValues\(IDataView, ITransformer, string, string\) Method
-
-R Squared is a measure of variation between the values predicted by the model and the true values\. 
-In a "perfect" model, there would be no variation between predictions and true values\. 
-
-Here we will plot the predicted values vs the true values for the trained model\. This RegressionChart\.html 
-is then saved to the location specified by [folderPath](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.PlotRSquaredValues(Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string,string).folderPath 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.PlotRSquaredValues\(Microsoft\.ML\.IDataView, Microsoft\.ML\.ITransformer, string, string\)\.folderPath')\. 
-
-See more information on R Squared at https://en\.wikipedia\.org/wiki/Coefficient\_of\_determination\.
-
-```csharp
-public static void PlotRSquaredValues(Microsoft.ML.IDataView trainData, Microsoft.ML.ITransformer model, string labelColumnName, string folderPath);
-```
-#### Parameters
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.PlotRSquaredValues(Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string,string).trainData'></a>
-
-`trainData` [Microsoft\.ML\.IDataView](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.idataview 'Microsoft\.ML\.IDataView')
-
-IDataView used to train the model\.
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.PlotRSquaredValues(Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string,string).model'></a>
-
-`model` [Microsoft\.ML\.ITransformer](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.itransformer 'Microsoft\.ML\.ITransformer')
-
-Model used for predictions\.
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.PlotRSquaredValues(Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string,string).labelColumnName'></a>
-
-`labelColumnName` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-Name of the predicted label column\.
-
-<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.PlotRSquaredValues(Microsoft.ML.IDataView,Microsoft.ML.ITransformer,string,string).folderPath'></a>
-
-`folderPath` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-Folder path to save the RegressionChart\.html file into\.
 
 <a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.Predict(DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput)'></a>
 

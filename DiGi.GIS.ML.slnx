@@ -7,4 +7,6 @@
   </Folder>
   <Project Path="DiGi.GIS.ML/DiGi.GIS.ML.csproj" />
   <Project Path="OrtoBuildingDetectionModelConsoleApp/OrtoBuildingDetectionModelConsoleApp.csproj" />
+  <Project Path="YearBuiltPredictionEvaluationConsoleApp/YearBuiltPredictionEvaluationConsoleApp.csproj" />
+  <Project Path="YearBuiltPredictionTrainingTableConsoleApp/YearBuiltPredictionTrainingTableConsoleApp.csproj" />
 </Solution>

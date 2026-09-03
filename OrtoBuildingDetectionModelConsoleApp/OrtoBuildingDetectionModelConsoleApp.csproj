@@ -24,7 +24,7 @@
       <HintPath>..\..\DiGi.Core\bin\DiGi.Core.IO.dll</HintPath>
     </Reference>
   </ItemGroup>
-	<ItemGroup Label="Transitive dependency of Microsoft.ML.FastTree, which DiGi.GIS.ML pulls in by HintPath">
+	<ItemGroup Label="Transitive dependency of Microsoft.ML.FastTree (via Microsoft.ML.LightGbm), which DiGi.GIS.ML pulls in by HintPath">
 		<PackageReference Include="Microsoft.ML.OneDal" Version="0.23.0" />
 	</ItemGroup>
 
