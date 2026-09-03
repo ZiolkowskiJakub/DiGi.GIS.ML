@@ -4,6 +4,7 @@ using DiGi.Core.IO.DelimitedData;
 using DiGi.Core.IO.DelimitedData.Enums;
 using DiGi.Core.IO.Table.Classes;
 using DiGi.GIS.Classes;
+using DiGi.GIS.IO;
 using DiGi.GIS.ML;
 using DiGi.GIS.ML.Classes;
 using DiGi.GIS.ML.ConsoleApp;

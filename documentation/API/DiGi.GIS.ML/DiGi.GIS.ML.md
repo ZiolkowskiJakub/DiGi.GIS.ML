@@ -154,31 +154,6 @@ public static class Query
 Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') → Query
 ### Methods
 
-<a name='DiGi.GIS.ML.Query.DefaultOnlyColumnNames(thisDiGi.Core.IO.Table.Classes.Table)'></a>
-
-## Query\.DefaultOnlyColumnNames\(this Table\) Method
-
-Names the columns of a table that carry the same value in every row\.
-
-Written as the acceptance check on an assembled training table. A feature column that never varies teaches the regressor nothing, and on this pipeline it has a specific and expensive cause: the detection and population columns are created by runs rather than by code, so a table assembled before those runs is a full looking file in which 108 of 172 features are the default. LightGbm fits it without complaining and the resulting metrics look ordinary.
-
-A hit is not automatically a defect - a single county genuinely shares one `County name`, and a rarely populated feature can be constant on a small sample. It is a list to explain, not a list to fail on blindly.
-
-```csharp
-public static System.Collections.Generic.List<string> DefaultOnlyColumnNames(this DiGi.Core.IO.Table.Classes.Table? table);
-```
-#### Parameters
-
-<a name='DiGi.GIS.ML.Query.DefaultOnlyColumnNames(thisDiGi.Core.IO.Table.Classes.Table).table'></a>
-
-`table` [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')
-
-The table to inspect\.
-
-#### Returns
-[System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  
-The names of the columns that never vary, in column order\. Empty when every column varies, or when the table has fewer than two rows to compare\.
-
 <a name='DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table)'></a>
 
 ## Query\.PredictedYearBuilts\(this Table\) Method
