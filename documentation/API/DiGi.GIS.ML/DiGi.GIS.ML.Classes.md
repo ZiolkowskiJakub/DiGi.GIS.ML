@@ -286,3 +286,21 @@ Implements [Predict\(Table\)](https://learn.microsoft.com/en-us/dotnet/api/digi.
 #### Returns
 [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')  
 A new table carrying the reference and predicted year built columns, or null if the input table is invalid\.
+
+<a name='DiGi.GIS.ML.Classes.YearBuiltPredictor.YearBuiltPredictorReadiness()'></a>
+
+## YearBuiltPredictor\.YearBuiltPredictorReadiness\(\) Method
+
+Reports whether this predictor can score at all\.
+
+Answers from the generated model's readiness surface: the trained file must be present at its resolved path, or the first scoring batch throws and the Lazy caches the failure for the life of the process.
+
+```csharp
+public DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness YearBuiltPredictorReadiness();
+```
+
+Implements [YearBuiltPredictorReadiness\(\)](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.io.interfaces.iyearbuiltpredictor.yearbuiltpredictorreadiness 'DiGi\.GIS\.IO\.Interfaces\.IYearBuiltPredictor\.YearBuiltPredictorReadiness')
+
+#### Returns
+[DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.io.classes.yearbuiltpredictorreadiness 'DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness')  
+The readiness of this predictor \- runnable when the model file is present, otherwise not runnable, carrying the path it looked for\.

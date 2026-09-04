@@ -7,6 +7,10 @@
 
 ## OrtoBuildingDetectionModel Class
 
+Readiness surface for the generated model, kept in a partial the Model Builder does not own so a retrain does not revert it\.
+
+A hand-fix inside OrtoBuildingDetectionModel.consumption.cs would be regenerated away on the next retrain; a sibling partial is where the correction survives. Its one dependency - the hand-maintained private MLNetModelPath - is recorded in OrtoBuildingDetectionModel.provenance.md so a retrain re-establishes it.
+
 ```csharp
 public class OrtoBuildingDetectionModel
 ```
@@ -26,6 +30,33 @@ public static readonly Lazy<PredictionEngine<ModelInput,ModelOutput>> PredictEng
 
 #### Field Value
 [System\.Lazy&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.lazy-1 'System\.Lazy\`1')[Microsoft\.ML\.PredictionEngine&lt;](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.predictionengine-2 'Microsoft\.ML\.PredictionEngine\`2')[ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelInput')[,](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.predictionengine-2 'Microsoft\.ML\.PredictionEngine\`2')[ModelOutput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelOutput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelOutput')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/microsoft.ml.predictionengine-2 'Microsoft\.ML\.PredictionEngine\`2')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.lazy-1 'System\.Lazy\`1')
+### Properties
+
+<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.IsModelAvailable'></a>
+
+## OrtoBuildingDetectionModel\.IsModelAvailable Property
+
+Gets whether the trained model file is present at the resolved path\.
+
+```csharp
+public static bool IsModelAvailable { get; }
+```
+
+#### Property Value
+[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')
+
+<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.ResolvedModelPath'></a>
+
+## OrtoBuildingDetectionModel\.ResolvedModelPath Property
+
+Gets the resolved model path, for the diagnostic when it is not present\.
+
+```csharp
+public static string ResolvedModelPath { get; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 ### Methods
 
 <a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.BuildPipeline(Microsoft.ML.MLContext)'></a>

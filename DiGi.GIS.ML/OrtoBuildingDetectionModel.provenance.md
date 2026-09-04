@@ -11,6 +11,10 @@ What `OrtoBuildingDetectionModel.mlnet` was trained on, how it was measured, and
 | Trainer | `LightGbmRegression`, selected by AutoML over 609 trials in 3 600 s |
 | Tool | `mlnet-win-x64` 16.18.2 — **not** Model Builder, which cannot run on Visual Studio 2026 (its AutoML binds `Microsoft.CodeAnalysis.CSharp` 4.9.0.0; VS 2026 ships 5.900) |
 
+## Sibling partials
+
+`OrtoBuildingDetectionModel.consumption.cs` is regenerated on every retrain. `OrtoBuildingDetectionModel.readiness.cs` is a **hand-maintained** partial of the same type (the model-file readiness probe for the Year Built predictor preflight) and reads the generated file's private `MLNetModelPath`. A retrain must keep that resolver, or the readiness partial stops compiling — loudly, not silently. Keep the two files together when re-establishing the model.
+
 ## Data
 
 | | |

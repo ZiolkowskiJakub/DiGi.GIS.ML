@@ -3,6 +3,7 @@ using DiGi.Core.Classes;
 using DiGi.Core.IO;
 using DiGi.Core.IO.Table.Classes;
 using DiGi.GIS.IO.Interfaces;
+using DiGi_GIS_ML;
 using System.Collections.Generic;
 
 namespace DiGi.GIS.ML.Classes
@@ -27,6 +28,23 @@ namespace DiGi.GIS.ML.Classes
         public Table? Predict(Table? table)
         {
             return table.PredictedYearBuilts();
+        }
+
+        /// <summary>
+        /// Reports whether this predictor can score at all.
+        /// <para>Answers from the generated model's readiness surface: the trained file must be present at its resolved path, or the first scoring batch throws and the Lazy caches the failure for the life of the process.</para>
+        /// </summary>
+        /// <returns>The readiness of this predictor - runnable when the model file is present, otherwise not runnable, carrying the path it looked for.</returns>
+        public DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness YearBuiltPredictorReadiness()
+        {
+            if (OrtoBuildingDetectionModel.IsModelAvailable)
+            {
+                return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(true);
+            }
+
+            return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(
+                false,
+                [string.Format(System.Globalization.CultureInfo.InvariantCulture, "The year built model was not found at {0}. The trained model file must be present beside the runner.", OrtoBuildingDetectionModel.ResolvedModelPath)]);
         }
 
         /// <summary>
