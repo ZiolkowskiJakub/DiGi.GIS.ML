@@ -16,6 +16,7 @@ namespace DiGi.GIS.ML.ConsoleApp
         /// Reads every stored year built datum of a county, in pages.
         /// <para>Both endpoints landed on 2026-09-02 (DiGi.GIS.WebAPI#21). Before them the table answered one reference at a time, which made reading a county of labels tens of thousands of round trips and made national label coverage unmeasurable.</para>
         /// <para>The references come first because there is no way to know which buildings carry a stored year without asking, and asking building by building is the thing the bulk read exists to replace.</para>
+        /// <para>The items read passes <c>fallbackbyreference=true</c>. That flag defaults to <c>false</c>, and with it off the read prunes to the single county part it was given: a <see cref="YearBuiltData"/> row filed under a sibling polygon part of a multi-part county is then silently not returned. The stakes are higher here than in a report - this is the training set, so a dropped label is not a missing row, it is a building the regressor never sees, and nothing downstream can tell that it happened. The pipeline that writes these rows sets the same flag for the same reason (DiGi.GIS.YOLO.UI/Query/YearBuiltDatasAsync.cs).</para>
         /// </summary>
         /// <param name="gisWebAPIManager">The <see cref="GISWebAPIManager"/> instance used to communicate with the WebAPI.</param>
         /// <param name="countyId">The identifier of the county to read. A county identifier, never a four character county code.</param>
@@ -94,7 +95,9 @@ namespace DiGi.GIS.ML.ConsoleApp
                 string? json;
                 try
                 {
-                    string requestUri = new UrlBuilder(path_Items).AddParameter("countyid", countyId).ToString();
+                    // fallbackbyreference defaults to false and prunes the read to this one county part, so a stored row
+                    // filed under a sibling part of a multi-part county would be silently dropped from the training set.
+                    string requestUri = new UrlBuilder(path_Items).AddParameter("countyid", countyId).AddParameter("fallbackbyreference", true).ToString();
                     PostResponse<string?> postResponse = await DiGi.WebAPI.Modify.PostAsync<string>(httpClient_Items, requestUri, httpContent, postOptions_Temp);
                     json = postResponse is not null && postResponse.Succeeded ? postResponse.Result : null;
                 }

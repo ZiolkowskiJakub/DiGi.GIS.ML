@@ -102,6 +102,8 @@ Both endpoints landed on 2026-09-02 (DiGi.GIS.WebAPI#21). Before them the table 
 
 The references come first because there is no way to know which buildings carry a stored year without asking, and asking building by building is the thing the bulk read exists to replace.
 
+The items read passes `fallbackbyreference=true`. That flag defaults to `false`, and with it off the read prunes to the single county part it was given: a [DiGi\.GIS\.Classes\.YearBuiltData](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.classes.yearbuiltdata 'DiGi\.GIS\.Classes\.YearBuiltData') row filed under a sibling polygon part of a multi-part county is then silently not returned. The stakes are higher here than in a report - this is the training set, so a dropped label is not a missing row, it is a building the regressor never sees, and nothing downstream can tell that it happened. The pipeline that writes these rows sets the same flag for the same reason (DiGi.GIS.YOLO.UI/Query/YearBuiltDatasAsync.cs).
+
 ```csharp
 public static System.Threading.Tasks.Task<System.Collections.Generic.List<DiGi.GIS.Classes.YearBuiltData>?> YearBuiltDatasAsync(this DiGi.GIS.WebAPI.Classes.GISWebAPIManager? gisWebAPIManager, int countyId, int referenceBatchSize=10000, DiGi.WebAPI.Classes.PostOptions? postOptions=null, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
 ```
