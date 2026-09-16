@@ -92,6 +92,51 @@ Optional explicit path to the configuration file\. Resolved against the output r
 [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')  
 The key if one is configured; otherwise null\.
 
+<a name='DiGi.GIS.ML.ConsoleApp.Query.UserYearBuiltsAsync(thisDiGi.GIS.WebAPI.Classes.GISWebAPIManager,int,DiGi.WebAPI.Classes.PostOptions,System.Threading.CancellationToken)'></a>
+
+## Query\.UserYearBuiltsAsync\(this GISWebAPIManager, int, PostOptions, CancellationToken\) Method
+
+Reads the year built labels of the named county in one request, projected on the server\.
+
+The endpoint answers the finished label dictionary - reference to year - and the full year history of a record never crosses the connection. That is the whole point over the incumbent path, which ships the entire stored history of every record of the county for the sake of one `short` per labelled building.
+
+The label selection is the server's and is the one `DiGi.GIS.ML.Query.YearBuiltLabels` makes on the same object: the user entry where the deserialized object holds one, otherwise its first non-prediction entry - the object's entries being a dictionary keyed by source, of which the last entry in stored order per source is what it answers - and the oldest labelled row of a multi-row reference. Keeping the selection in one place - the SQL - is what lets `YearBuiltLabels` stay the parity oracle instead of a second implementation of the same rule.
+
+Null means the read failed, and that includes the endpoint not being on the build the host runs: the deployed host lags the repository, so until it carries `useryearbuiltbycountyid` every call answers 404 and this returns null, which the caller reads as "use the incumbent path". An empty dictionary is a county that holds no label, which the caller skips.
+
+```csharp
+public static System.Threading.Tasks.Task<System.Collections.Generic.Dictionary<string,short>?> UserYearBuiltsAsync(this DiGi.GIS.WebAPI.Classes.GISWebAPIManager? gisWebAPIManager, int countyId, DiGi.WebAPI.Classes.PostOptions? postOptions=null, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.ConsoleApp.Query.UserYearBuiltsAsync(thisDiGi.GIS.WebAPI.Classes.GISWebAPIManager,int,DiGi.WebAPI.Classes.PostOptions,System.Threading.CancellationToken).gisWebAPIManager'></a>
+
+`gisWebAPIManager` [DiGi\.GIS\.WebAPI\.Classes\.GISWebAPIManager](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.webapi.classes.giswebapimanager 'DiGi\.GIS\.WebAPI\.Classes\.GISWebAPIManager')
+
+The [DiGi\.GIS\.WebAPI\.Classes\.GISWebAPIManager](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.webapi.classes.giswebapimanager 'DiGi\.GIS\.WebAPI\.Classes\.GISWebAPIManager') instance used to communicate with the WebAPI\.
+
+<a name='DiGi.GIS.ML.ConsoleApp.Query.UserYearBuiltsAsync(thisDiGi.GIS.WebAPI.Classes.GISWebAPIManager,int,DiGi.WebAPI.Classes.PostOptions,System.Threading.CancellationToken).countyId'></a>
+
+`countyId` [System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
+
+The identifier of the county row to read\. A county identifier, never a four character county code\.
+
+<a name='DiGi.GIS.ML.ConsoleApp.Query.UserYearBuiltsAsync(thisDiGi.GIS.WebAPI.Classes.GISWebAPIManager,int,DiGi.WebAPI.Classes.PostOptions,System.Threading.CancellationToken).postOptions'></a>
+
+`postOptions` [DiGi\.WebAPI\.Classes\.PostOptions](https://learn.microsoft.com/en-us/dotnet/api/digi.webapi.classes.postoptions 'DiGi\.WebAPI\.Classes\.PostOptions')
+
+Optional configuration options for the request\.
+
+<a name='DiGi.GIS.ML.ConsoleApp.Query.UserYearBuiltsAsync(thisDiGi.GIS.WebAPI.Classes.GISWebAPIManager,int,DiGi.WebAPI.Classes.PostOptions,System.Threading.CancellationToken).cancellationToken'></a>
+
+`cancellationToken` [System\.Threading\.CancellationToken](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken 'System\.Threading\.CancellationToken')
+
+The [System\.Threading\.CancellationToken](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken 'System\.Threading\.CancellationToken') to observe while waiting for the task to complete\.
+
+#### Returns
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Int16](https://learn.microsoft.com/en-us/dotnet/api/system.int16 'System\.Int16')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+A task returning the year of each labelled reference held, empty when the county holds no label, or null when the county could not be read\.
+
 <a name='DiGi.GIS.ML.ConsoleApp.Query.YearBuiltDatasAsync(thisDiGi.GIS.WebAPI.Classes.GISWebAPIManager,int,int,DiGi.WebAPI.Classes.PostOptions,System.Threading.CancellationToken)'></a>
 
 ## Query\.YearBuiltDatasAsync\(this GISWebAPIManager, int, int, PostOptions, CancellationToken\) Method

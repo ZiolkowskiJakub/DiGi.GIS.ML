@@ -92,17 +92,34 @@ foreach (int countyId in countyIds)
 {
     Console.WriteLine($"County {countyId}");
 
-    List<YearBuiltData>? yearBuiltDatas = await gisWebAPIManager.YearBuiltDatasAsync(countyId, cancellationToken: cancellationToken);
-    if (yearBuiltDatas is null)
-    {
-        Console.WriteLine("  [WARN] the stored year built data could not be read - county skipped");
-        continue;
-    }
+    // The projected read is one request and its answer is the finished label dictionary; the full year
+    // history of a record never crosses the connection.
+    // TODO [ProjectedLabels]: the incumbent full read below is temporary, and its removal condition is the
+    // deployment, not a date - remove it once the #8 retrain has run its training-table assembly on the
+    // projected path alone and the parity gate of ZiolkowskiJakub/DiGi.GIS.ML#10 has passed on the host it used.
+    Dictionary<string, short>? years_County = await gisWebAPIManager.UserYearBuiltsAsync(countyId, cancellationToken: cancellationToken);
 
-    // Only a non-prediction entry is a label. Every record on these counties also carries the incumbent
-    // model's own answer, and taking that would train this model on its predecessor.
-    Dictionary<string, short> years_County = yearBuiltDatas.YearBuiltLabels();
-    Console.WriteLine($"  {yearBuiltDatas.Count} stored year built data, {years_County.Count} usable labels");
+    if (years_County is null)
+    {
+        // The endpoint is not on this build, or the read failed - the incumbent path answers: the full
+        // read of every record of the county, then the label selection on the client. A non-prediction
+        // entry is the only thing that is a label: every record on these counties also carries the
+        // incumbent model's own answer, and taking that would train this model on its predecessor.
+        // Query.YearBuiltLabels stays the definition of the label and the parity oracle of the projected read.
+        List<YearBuiltData>? yearBuiltDatas = await gisWebAPIManager.YearBuiltDatasAsync(countyId, cancellationToken: cancellationToken);
+        if (yearBuiltDatas is null)
+        {
+            Console.WriteLine("  [WARN] the stored year built data could not be read - county skipped");
+            continue;
+        }
+
+        years_County = yearBuiltDatas.YearBuiltLabels();
+        Console.WriteLine($"  {yearBuiltDatas.Count} stored year built data, {years_County.Count} usable labels (incumbent read)");
+    }
+    else
+    {
+        Console.WriteLine($"  {years_County.Count} usable labels (projected read)");
+    }
 
     if (years_County.Count == 0)
     {
