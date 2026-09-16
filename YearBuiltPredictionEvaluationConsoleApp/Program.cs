@@ -44,12 +44,12 @@ if (table is null || table.RowCount == 0)
     return 2;
 }
 
-int index_Reference = table.GetColumnIndex("Reference");
-int index_Label = table.GetColumnIndex("Year built");
-int index_Subdivision = table.GetColumnIndex("Subdivision Id");
+int index_Reference = table.GetColumnIndex(DiGi.GIS.IO.Constants.Column.Reference.Name);
+int index_Label = table.GetColumnIndex(DiGi.GIS.ML.Constants.Column.YearBuilt.Name);
+int index_Subdivision = table.GetColumnIndex(DiGi.GIS.IO.Constants.Column.SubdivisionId.Name);
 if (index_Reference < 0 || index_Label < 0)
 {
-    Console.WriteLine("[ERROR] the table needs a 'Reference' and a 'Year built' column.");
+    Console.WriteLine($"[ERROR] the table needs a '{DiGi.GIS.IO.Constants.Column.Reference.Name}' and a '{DiGi.GIS.ML.Constants.Column.YearBuilt.Name}' column.");
     return 2;
 }
 
@@ -77,7 +77,7 @@ List<double?> years_FirstDetection = [];
 int[] indexes_Confidence = new int[18];
 for (int y = 2008; y <= 2025; y++)
 {
-    indexes_Confidence[y - 2008] = table.GetColumnIndex($"Prediction Confidence {y}");
+    indexes_Confidence[y - 2008] = table.GetColumnIndex($"{DiGi.GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence} {y}");
 }
 
 for (int i = 0; i < table.RowCount; i++)
@@ -110,8 +110,8 @@ Dictionary<string, List<double?>> predictors = new()
 Table? table_Incumbent = table.PredictedYearBuilts();
 if (table_Incumbent is not null)
 {
-    int index_Reference_Incumbent = table_Incumbent.GetColumnIndex("Reference");
-    int index_Predicted = table_Incumbent.GetColumnIndex("Predicted year built");
+    int index_Reference_Incumbent = table_Incumbent.GetColumnIndex(DiGi.GIS.IO.Constants.Column.Reference.Name);
+    int index_Predicted = table_Incumbent.GetColumnIndex(DiGi.GIS.IO.Constants.Column.PredictedYearBuilt.Name);
     Dictionary<string, double> years_ByReference = [];
     for (int i = 0; i < table_Incumbent.RowCount; i++)
     {

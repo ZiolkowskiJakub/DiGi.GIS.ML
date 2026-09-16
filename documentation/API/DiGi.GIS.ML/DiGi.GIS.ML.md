@@ -166,6 +166,8 @@ A column the table does not carry reads as the type default, which is deliberate
 
 The generated [ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelInput') is the authority for this list. It is regenerated whenever the model is retrained, and the feature contract fact in DiGi.GIS.ML.xUnit fails if this and the allow-list stop agreeing.
 
+Every column name above comes from `DiGi.GIS.IO.Constants.Column` or a `DiGi.GIS.IO.Create` factory - the same sources the DiGi.GIS.IO allow-list is assembled from - so a rename there cannot silently zero a feature in this list. The generated [ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelInput') is the one place that still matches by string: its `[ColumnName]` bindings are fixed only by a Model Builder regeneration of `OrtoBuildingDetectionModel.*.cs`, so a rename in DiGi.GIS.IO must always be followed by that regeneration.
+
 ```csharp
 public static DiGi.Core.IO.Table.Classes.Table? PredictedYearBuilts(this DiGi.Core.IO.Table.Classes.Table? table);
 ```
