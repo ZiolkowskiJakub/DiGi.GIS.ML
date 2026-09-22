@@ -99,5 +99,84 @@ namespace DiGi.GIS.ML.ConsoleApp
 
             return GIS.WebAPI.Create.Table(JsonNode.Parse(json!) as JsonObject);
         }
+
+        /// <summary>
+        /// Reads the stored building data of the named county as a table, projected to the named columns, one keyset page at a time.
+        /// <para>The page is keyed by reference: the server answers the first <c>pageSize</c> rows after <c>cursor</c> - or from the start when it is null - and the caller advances <c>cursor</c> to the last reference it read until a short page answers. A page shorter than <c>pageSize</c> is the end of the county.</para>
+        /// <para>The projection is an allow-list, and the same allow-list the inference pipeline projects through - <c>DiGi.GIS.IO.Query.YearBuiltPredictionInputColumns</c> - so asking for every column would hand the trainer the pipeline&apos;s own output column back as a feature. The server always adds <c>Reference</c> and <c>County Id</c> on top of it.</para>
+        /// </summary>
+        /// <param name="gisWebAPIManager">The <see cref="GISWebAPIManager"/> instance used to communicate with the WebAPI.</param>
+        /// <param name="countyId">The identifier of the county partition to page.</param>
+        /// <param name="columnUniqueIds">The unique identifiers of the columns to project. Null or empty asks for every column, which this never wants.</param>
+        /// <param name="cursor">The last reference read on the previous page, or null for the first page.</param>
+        /// <param name="pageSize">The page size, within the endpoint&apos;s [1, 10000] range.</param>
+        /// <param name="postOptions">Optional configuration options for the request.</param>
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
+        /// <returns>A task returning the page as a projected table, or null when it could not be read.</returns>
+        public static async Task<Table?> BuildingDataTableAsync(this GISWebAPIManager? gisWebAPIManager, int countyId, IEnumerable<string>? columnUniqueIds, string? cursor, int pageSize, PostOptions? postOptions = null, CancellationToken cancellationToken = default)
+        {
+            if (gisWebAPIManager is null || countyId <= 0)
+            {
+                return null;
+            }
+
+            JsonArray jsonArray_ColumnUniqueIds = [];
+            if (columnUniqueIds is not null)
+            {
+                foreach (string columnUniqueId in columnUniqueIds)
+                {
+                    if (!string.IsNullOrWhiteSpace(columnUniqueId))
+                    {
+                        jsonArray_ColumnUniqueIds.Add(columnUniqueId);
+                    }
+                }
+            }
+
+            HttpClient? httpClient = gisWebAPIManager.CreateHttpClient<BuildingDataController>(nameof(BuildingDataController.GetTableByBuildingDataByPagingParameterAsync), out string? path);
+            if (httpClient is null || string.IsNullOrWhiteSpace(path))
+            {
+                Serilog.Modify.Log(Serilog.Enums.LogEventLevel.Error, "HttpClient or path for {Method} could not be resolved", nameof(BuildingDataController.GetTableByBuildingDataByPagingParameterAsync));
+                return null;
+            }
+
+            // Built member by member from the parameter type rather than serialized from an instance of it, so a
+            // member renamed on the server side stops compiling here instead of quietly binding to nothing.
+            JsonObject jsonObject = new()
+            {
+                [nameof(BuildingDataByPagingParameter.CountyId)] = countyId,
+                [nameof(BuildingDataByPagingParameter.ColumnUniqueIds)] = jsonArray_ColumnUniqueIds,
+                [nameof(BuildingDataByPagingParameter.PageSize)] = pageSize
+            };
+            if (!string.IsNullOrWhiteSpace(cursor))
+            {
+                jsonObject[nameof(BuildingDataByPagingParameter.Cursor)] = cursor;
+            }
+
+            HttpContent? httpContent = await GIS.WebAPI.Create.HttpContent(jsonObject.ToJsonString(), cancellationToken);
+            if (httpContent is null)
+            {
+                return null;
+            }
+
+            string? json;
+            try
+            {
+                PostResponse<string?> postResponse = await DiGi.WebAPI.Modify.PostAsync<string>(httpClient, path, httpContent, postOptions ?? new PostOptions() { RequestResult = true, Delay = TimeSpan.FromSeconds(60) });
+
+                json = postResponse is not null && postResponse.Succeeded ? postResponse.Result : null;
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                Serilog.Modify.Log(exception, "The building data page could not be read for county {CountyId} after {Cursor}", countyId, cursor ?? "(start)");
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            return GIS.WebAPI.Create.Table(JsonNode.Parse(json!) as JsonObject);
+        }
     }
 }

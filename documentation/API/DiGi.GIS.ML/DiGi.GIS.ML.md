@@ -183,28 +183,51 @@ The table containing building features, including a reference column\.
 [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')  
 A new table carrying the reference and predicted year built columns, or null if the input table is null or lacks a reference column\.
 
-<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisSystem.Collections.Generic.IEnumerable_DiGi.GIS.Classes.YearBuiltData_)'></a>
+<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisDiGi.Core.IO.Table.Classes.Table)'></a>
 
-## Query\.YearBuiltLabels\(this IEnumerable\<YearBuiltData\>\) Method
+## Query\.YearBuiltLabels\(this Table\) Method
 
-Extracts the training labels from stored year built data, by building reference\.
+Extracts the training labels of one stored building data table, by building reference\.
 
-A stored [DiGi\.GIS\.Classes\.YearBuiltData](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.classes.yearbuiltdata 'DiGi\.GIS\.Classes\.YearBuiltData') holds the history of every year anyone has attributed to the building, and on the counties this model trains on that includes <b>this model's own predecessor</b>: every record sampled on 2026-09-02 carried a [DiGi\.GIS\.Classes\.UserYearBuilt](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.classes.useryearbuilt 'DiGi\.GIS\.Classes\.UserYearBuilt') together with a [DiGi\.GIS\.Classes\.PredictedYearBuilt](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.classes.predictedyearbuilt 'DiGi\.GIS\.Classes\.PredictedYearBuilt') stamped 2025-05-29, the two disagreeing on 26 to 28 percent of records. Taking whichever year a record happens to list first would therefore train the regressor on the previous regressor's output for a quarter of its rows, and that reads as an accuracy gain rather than as a defect.
-
-So only an entry whose [DiGi\.GIS\.Interfaces\.IYearBuilt\.YearBuiltSource](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.interfaces.iyearbuilt.yearbuiltsource 'DiGi\.GIS\.Interfaces\.IYearBuilt\.YearBuiltSource') is not [DiGi\.GIS\.Enums\.YearBuiltSource\.Prediction](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.enums.yearbuiltsource.prediction 'DiGi\.GIS\.Enums\.YearBuiltSource\.Prediction') can be a label. A record carrying nothing else is an unlabelled building and is left out rather than defaulted - a building with no known year is not a building whose year is zero.
-
-The filter is on the source rather than on the concrete type, so a future non-prediction entry counts as ground truth without this having to be revisited.
+Delegates to the IEnumerable<Table?> overload with a single element so the two cannot disagree.
 
 ```csharp
-public static System.Collections.Generic.Dictionary<string,short> YearBuiltLabels(this System.Collections.Generic.IEnumerable<DiGi.GIS.Classes.YearBuiltData?>? yearBuiltDatas);
+public static System.Collections.Generic.Dictionary<string,short> YearBuiltLabels(this DiGi.Core.IO.Table.Classes.Table? table);
 ```
 #### Parameters
 
-<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisSystem.Collections.Generic.IEnumerable_DiGi.GIS.Classes.YearBuiltData_).yearBuiltDatas'></a>
+<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisDiGi.Core.IO.Table.Classes.Table).table'></a>
 
-`yearBuiltDatas` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[DiGi\.GIS\.Classes\.YearBuiltData](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.classes.yearbuiltdata 'DiGi\.GIS\.Classes\.YearBuiltData')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+`table` [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')
 
-The stored year built data to take labels from\.
+The stored building data table to take labels from, or null\.
+
+#### Returns
+[System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Int16](https://learn.microsoft.com/en-us/dotnet/api/system.int16 'System\.Int16')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')  
+The construction year of each labelled building, by reference\. Empty when the table is null or holds no labels\.
+
+<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_)'></a>
+
+## Query\.YearBuiltLabels\(this IEnumerable\<Table\>\) Method
+
+Extracts the training labels from the stored `User year built` column, by building reference\.
+
+The value is the most frequent exact user year over every stored record of the building. The rule and its tie-breaks are defined once, on `DiGi.GIS.Query.MostFrequentUserYearBuilt`, and applied when `DiGi.GIS.IO.Modify.Update_Building2D_YearBuilt` writes the column. This method reads, it does not re-derive.
+
+Only this column is read, because the two year built columns beside it are the regressor's own territory. `Predicted year built` is this model's own output, and `Calculated year built` equals the prediction wherever no user year exists: on the counties this model trains on the stored user and predicted years disagree on roughly a quarter of the buildings, so reading either would train the regressor on its predecessor, which reads as an accuracy gain rather than as a defect.
+
+An empty cell is an unlabelled building, not year zero. A table without the column - a county the Year Built update has not reached - gives no labels.
+
+```csharp
+public static System.Collections.Generic.Dictionary<string,short> YearBuiltLabels(this System.Collections.Generic.IEnumerable<DiGi.Core.IO.Table.Classes.Table?>? tables);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_).tables'></a>
+
+`tables` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The stored building data tables to take labels from, typically one page or one county each\.
 
 #### Returns
 [System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Int16](https://learn.microsoft.com/en-us/dotnet/api/system.int16 'System\.Int16')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')  

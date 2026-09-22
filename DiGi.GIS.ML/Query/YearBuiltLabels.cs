@@ -1,6 +1,4 @@
-using DiGi.GIS.Classes;
-using DiGi.GIS.Enums;
-using DiGi.GIS.Interfaces;
+using DiGi.Core.IO.Table.Classes;
 using System.Collections.Generic;
 
 namespace DiGi.GIS.ML
@@ -8,53 +6,66 @@ namespace DiGi.GIS.ML
     public static partial class Query
     {
         /// <summary>
-        /// Extracts the training labels from stored year built data, by building reference.
-        /// <para>A stored <see cref="YearBuiltData"/> holds the history of every year anyone has attributed to the building, and on the counties this model trains on that includes <b>this model&apos;s own predecessor</b>: every record sampled on 2026-09-02 carried a <see cref="UserYearBuilt"/> together with a <see cref="PredictedYearBuilt"/> stamped 2025-05-29, the two disagreeing on 26 to 28 percent of records. Taking whichever year a record happens to list first would therefore train the regressor on the previous regressor&apos;s output for a quarter of its rows, and that reads as an accuracy gain rather than as a defect.</para>
-        /// <para>So only an entry whose <see cref="IYearBuilt.YearBuiltSource"/> is not <see cref="YearBuiltSource.Prediction"/> can be a label. A record carrying nothing else is an unlabelled building and is left out rather than defaulted - a building with no known year is not a building whose year is zero.</para>
-        /// <para>The filter is on the source rather than on the concrete type, so a future non-prediction entry counts as ground truth without this having to be revisited.</para>
+        /// Extracts the training labels from the stored <c>User year built</c> column, by building reference.
+        /// <para>The value is the most frequent exact user year over every stored record of the building. The rule and its tie-breaks are defined once, on <c>DiGi.GIS.Query.MostFrequentUserYearBuilt</c>, and applied when <c>DiGi.GIS.IO.Modify.Update_Building2D_YearBuilt</c> writes the column. This method reads, it does not re-derive.</para>
+        /// <para>Only this column is read, because the two year built columns beside it are the regressor's own territory. <c>Predicted year built</c> is this model's own output, and <c>Calculated year built</c> equals the prediction wherever no user year exists: on the counties this model trains on the stored user and predicted years disagree on roughly a quarter of the buildings, so reading either would train the regressor on its predecessor, which reads as an accuracy gain rather than as a defect.</para>
+        /// <para>An empty cell is an unlabelled building, not year zero. A table without the column - a county the Year Built update has not reached - gives no labels.</para>
         /// </summary>
-        /// <param name="yearBuiltDatas">The stored year built data to take labels from.</param>
+        /// <param name="tables">The stored building data tables to take labels from, typically one page or one county each.</param>
         /// <returns>The construction year of each labelled building, by reference. Empty when nothing was labelled.</returns>
-        public static Dictionary<string, short> YearBuiltLabels(this IEnumerable<YearBuiltData?>? yearBuiltDatas)
+        public static Dictionary<string, short> YearBuiltLabels(this IEnumerable<Table?>? tables)
         {
             Dictionary<string, short> result = [];
 
-            if (yearBuiltDatas is null)
+            if (tables is null)
             {
                 return result;
             }
 
-            foreach (YearBuiltData? yearBuiltData in yearBuiltDatas)
+            foreach (Table? table in tables)
             {
-                string? reference = yearBuiltData?.Reference;
-                if (yearBuiltData is null || string.IsNullOrWhiteSpace(reference))
+                if (table is null || table.RowCount == 0)
                 {
                     continue;
                 }
 
-                // The user supplied year is the ground truth wherever there is one; anything else that is not a
-                // prediction is taken only when there is not.
-                short? year = yearBuiltData.GetUserYearBuilt()?.Year;
-
-                if (year is null && yearBuiltData.YearBuilts is IEnumerable<IYearBuilt> yearBuilts)
+                int index_Reference = table.GetColumnIndex(GIS.IO.Constants.Column.Reference.Name);
+                int index_UserYearBuilt = table.GetColumnIndex(GIS.IO.Constants.Column.UserYearBuilt.Name);
+                if (index_Reference < 0 || index_UserYearBuilt < 0)
                 {
-                    foreach (IYearBuilt yearBuilt in yearBuilts)
-                    {
-                        if (yearBuilt is not null && yearBuilt.YearBuiltSource != YearBuiltSource.Prediction)
-                        {
-                            year = yearBuilt.Year;
-                            break;
-                        }
-                    }
+                    continue;
                 }
 
-                if (year is short year_Temp)
+                for (int i = 0; i < table.RowCount; i++)
                 {
-                    result[reference!] = year_Temp;
+                    string? reference = table.GetValue<string>(i, index_Reference);
+                    if (string.IsNullOrWhiteSpace(reference))
+                    {
+                        continue;
+                    }
+
+                    // An empty cell is an unlabelled building, not a year of zero, and a value above short.MaxValue would wrap on the cast.
+                    if (!table.TryGetValue<int>(i, index_UserYearBuilt, out int year) || year < 1 || year > short.MaxValue)
+                    {
+                        continue;
+                    }
+
+                    result[reference!] = (short)year;
                 }
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Extracts the training labels of one stored building data table, by building reference.
+        /// <para>Delegates to the IEnumerable&lt;Table?&gt; overload with a single element so the two cannot disagree.</para>
+        /// </summary>
+        /// <param name="table">The stored building data table to take labels from, or null.</param>
+        /// <returns>The construction year of each labelled building, by reference. Empty when the table is null or holds no labels.</returns>
+        public static Dictionary<string, short> YearBuiltLabels(this Table? table)
+        {
+            return YearBuiltLabels(table is null ? null : [table]);
         }
     }
 }

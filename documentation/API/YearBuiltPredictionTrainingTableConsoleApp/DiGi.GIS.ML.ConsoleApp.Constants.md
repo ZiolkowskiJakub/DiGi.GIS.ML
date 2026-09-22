@@ -31,6 +31,21 @@ public const int Reference_Maximum = 10000;
 #### Field Value
 [System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
 
+<a name='DiGi.GIS.ML.ConsoleApp.Constants.Count.Row_Maximum'></a>
+
+## Count\.Row\_Maximum Field
+
+The page size of the keyset\-paged label read\.
+
+The label read projects the single `User year built` column beside the `Reference` and `County Id` the server always adds, so a page is light and well under the endpoint's `PageSize` cap of 10 000. A 3-column page at 5 000 rows is small enough to keep the request fast without paging a county in a hundred calls.
+
+```csharp
+public const int Row_Maximum = 5000;
+```
+
+#### Field Value
+[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
+
 <a name='DiGi.GIS.ML.ConsoleApp.Constants.FileName'></a>
 
 ## FileName Class

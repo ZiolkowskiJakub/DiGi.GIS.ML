@@ -3,7 +3,6 @@ using DiGi.Core.IO;
 using DiGi.Core.IO.DelimitedData;
 using DiGi.Core.IO.DelimitedData.Enums;
 using DiGi.Core.IO.Table.Classes;
-using DiGi.GIS.Classes;
 using DiGi.GIS.IO;
 using DiGi.GIS.ML;
 using DiGi.GIS.ML.Classes;
@@ -83,6 +82,14 @@ foreach (string columnUniqueId in YearBuiltPredictor.InputColumnUniqueIds())
     }
 }
 
+// The label is the stored 'User year built' column of building_data, projected alone. The server adds
+// Reference and County Id on top, and the trainer needs only the year of each labelled reference.
+List<string> columnUniqueIds_Label = [];
+if (DiGi.GIS.IO.Constants.Column.UserYearBuilt.UniqueId() is string columnUniqueId_UserYearBuilt)
+{
+    columnUniqueIds_Label.Add(columnUniqueId_UserYearBuilt);
+}
+
 CancellationToken cancellationToken = CancellationToken.None;
 
 Dictionary<string, short> years_ByReference = [];
@@ -92,39 +99,51 @@ foreach (int countyId in countyIds)
 {
     Console.WriteLine($"County {countyId}");
 
-    // The projected read is one request and its answer is the finished label dictionary; the full year
-    // history of a record never crosses the connection.
-    // TODO [ProjectedLabels]: the incumbent full read below is temporary, and its removal condition is the
-    // deployment, not a date - remove it once the #8 retrain has run its training-table assembly on the
-    // projected path alone and the parity gate of ZiolkowskiJakub/DiGi.GIS.ML#10 has passed on the host it used.
-    Dictionary<string, short>? years_County = await gisWebAPIManager.UserYearBuiltsAsync(countyId, cancellationToken: cancellationToken);
+    // The label is the stored 'User year built' column, paged by reference. The column is written once by the
+    // Year Built building data update, so reading it back is the finished label - no selection on the client.
+    bool readFailed = false;
+    string? cursor = null;
+    List<Table?> tables_Label = [];
+    int pageCount_Label = 0;
+    int rowCount_Page = 0;
 
-    if (years_County is null)
+    do
     {
-        // The endpoint is not on this build, or the read failed - the incumbent path answers: the full
-        // read of every record of the county, then the label selection on the client. A non-prediction
-        // entry is the only thing that is a label: every record on these counties also carries the
-        // incumbent model's own answer, and taking that would train this model on its predecessor.
-        // Query.YearBuiltLabels stays the definition of the label and the parity oracle of the projected read.
-        List<YearBuiltData>? yearBuiltDatas = await gisWebAPIManager.YearBuiltDatasAsync(countyId, cancellationToken: cancellationToken);
-        if (yearBuiltDatas is null)
+        Table? table_Label = await gisWebAPIManager.BuildingDataTableAsync(countyId, columnUniqueIds_Label, cursor, DiGi.GIS.ML.ConsoleApp.Constants.Count.Row_Maximum, cancellationToken: cancellationToken);
+        if (table_Label is null)
         {
-            Console.WriteLine("  [WARN] the stored year built data could not be read - county skipped");
-            continue;
+            // A failed page is not a county with no label; continuing would train on a partial label set silently.
+            Console.WriteLine("  [WARN] a page of the 'User year built' column could not be read - county skipped");
+            readFailed = true;
+            break;
         }
 
-        years_County = yearBuiltDatas.YearBuiltLabels();
-        Console.WriteLine($"  {yearBuiltDatas.Count} stored year built data, {years_County.Count} usable labels (incumbent read)");
-    }
-    else
-    {
-        Console.WriteLine($"  {years_County.Count} usable labels (projected read)");
-    }
+        tables_Label.Add(table_Label);
+        pageCount_Label++;
+        rowCount_Page = table_Label.RowCount;
 
-    if (years_County.Count == 0)
+        // Advance the cursor to the last reference on the page; a short page is the end of the county.
+        // A blank last reference is treated as the end rather than a seek-key: buildingDataTableAsync drops a
+        // blank cursor from the request, which would re-return the first page and spin the loop.
+        string? reference_Last = rowCount_Page == 0 ? null : table_Label.GetValue<string>(rowCount_Page - 1, table_Label.GetColumnIndex(DiGi.GIS.IO.Constants.Column.Reference.Name));
+        cursor = string.IsNullOrWhiteSpace(reference_Last) ? null : reference_Last;
+    }
+    while (rowCount_Page == DiGi.GIS.ML.ConsoleApp.Constants.Count.Row_Maximum && cursor is not null);
+
+    if (readFailed)
     {
         continue;
     }
+
+    Dictionary<string, short> years_County = tables_Label.YearBuiltLabels();
+
+    if (years_County.Count == 0)
+    {
+        Console.WriteLine($"  [WARN] no 'User year built' value stored for county {countyId} - the Year Built building data update (ZiolkowskiJakub/DiGi.GIS.PostgreSQL#94) has not reached it");
+        continue;
+    }
+
+    Console.WriteLine($"  {years_County.Count} labels from building_data 'User year built' over {pageCount_Label} page(s)");
 
     List<string> references = [.. years_County.Keys];
 
