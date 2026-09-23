@@ -11,6 +11,8 @@ Readiness surface for the generated model, kept in a partial the Model Builder d
 
 A hand-fix inside OrtoBuildingDetectionModel.consumption.cs would be regenerated away on the next retrain; a sibling partial is where the correction survives. Its one dependency - the hand-maintained private MLNetModelPath - is recorded in OrtoBuildingDetectionModel.provenance.md so a retrain re-establishes it.
 
+[TrainedYears](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.TrainedYears 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.TrainedYears') and [TrainedRadiuses](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.TrainedRadiuses 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.TrainedRadiuses') record the contract the model was trained under. A retrain must update both, or the orchestrator refuses runs whose options match the old range and the `FeatureContract` fact fails against the regenerated `ModelInput`.
+
 ```csharp
 public class OrtoBuildingDetectionModel
 ```
@@ -57,6 +59,32 @@ public static string ResolvedModelPath { get; }
 
 #### Property Value
 [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.TrainedRadiuses'></a>
+
+## OrtoBuildingDetectionModel\.TrainedRadiuses Property
+
+Gets the radiuses, in metres, this model was trained on\. A retrain must update this, together with [TrainedYears](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.TrainedYears 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.TrainedYears')\.
+
+```csharp
+public static System.Collections.Generic.List<double> TrainedRadiuses { get; }
+```
+
+#### Property Value
+[System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')
+
+<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.TrainedYears'></a>
+
+## OrtoBuildingDetectionModel\.TrainedYears Property
+
+Gets the year range this model was trained on\. A retrain must update this, together with [TrainedRadiuses](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.TrainedRadiuses 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.TrainedRadiuses')\.
+
+```csharp
+public static DiGi.Core.Classes.Range<int> TrainedYears { get; }
+```
+
+#### Property Value
+[DiGi\.Core\.Classes\.Range&lt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')
 ### Methods
 
 <a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.BuildPipeline(Microsoft.ML.MLContext)'></a>

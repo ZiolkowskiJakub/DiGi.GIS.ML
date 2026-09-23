@@ -15,6 +15,8 @@ What `OrtoBuildingDetectionModel.mlnet` was trained on, how it was measured, and
 
 `OrtoBuildingDetectionModel.consumption.cs` is regenerated on every retrain. `OrtoBuildingDetectionModel.readiness.cs` is a **hand-maintained** partial of the same type (the model-file readiness probe for the Year Built predictor preflight) and reads the generated file's private `MLNetModelPath`. A retrain must keep that resolver, or the readiness partial stops compiling — loudly, not silently. Keep the two files together when re-establishing the model.
 
+The trained contract — `TrainedYears` and `TrainedRadiuses` — also lives in `OrtoBuildingDetectionModel.readiness.cs`, not in the generated file, for the same reason: a retrain regenerates the generated file and would revert any contract written there in silence. A retrain must update both to the new range, or the orchestrator refuses every run whose options match the old range and the `FeatureContract` fact fails against the regenerated `ModelInput`.
+
 ## Data
 
 | | |
@@ -61,6 +63,19 @@ Measured on 4 012 rows the twin never saw:
 **This model does not beat the trivial heuristic outright.** It wins on RMSE and R² and loses on MAE. The heuristic is exactly right on 89.2 % of rows but 3.8 % of its errors are 5 years or more, worst case 16; this model is exactly right less often with a much tighter tail. Whether that trade is worth making is a product decision — see [#4](https://github.com/ZiolkowskiJakub/DiGi.GIS.ML/issues/4).
 
 The previous model's −1.771 is not a fair reading of what it once was. It binds legacy display names (`Area`, `Location X`, `Polpulation 2008`) that no longer exist, so it reads defaults for most features. It is what that model would have produced on current data.
+
+### The cost of a narrowed projection ([#6](https://github.com/ZiolkowskiJakub/DiGi.GIS.ML/issues/6))
+
+Measured with `YearBuiltPredictionEvaluationConsoleApp --years 2008..2020` on the 20 241 training rows, scoring the shipped model through the deployed path. This is a fit, not a holdout - the model has seen these rows - so the absolute figures are optimistic, but the relative delta between the full and the narrowed projection is what the feature-contract guard sizes:
+
+| Split | MAE (years) | RMSE | R² |
+|---|---|---|---|
+| full 2008..2025, random 20% | 0.107 | 0.646 | 0.970 |
+| narrowed 2008..2020, random 20% | 0.650 | 1.344 | 0.871 |
+| full 2008..2025, grouped 20% | 0.103 | 0.617 | 0.975 |
+| narrowed 2008..2020, grouped 20% | 0.685 | 1.423 | 0.868 |
+
+Narrowing the projection to 2008..2020 drops R² by about 0.10 and multiplies the MAE by roughly six. The silent degradation is not small - which is exactly why the guard refuses a narrowed options file rather than warning about it.
 
 ### Not measured
 

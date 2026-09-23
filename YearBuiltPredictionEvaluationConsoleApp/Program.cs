@@ -20,6 +20,8 @@ using System.Text;
 string? path_Table = null;
 string? path_Model = null;
 string? path_Output = null;
+string? text_Years = null;
+string? text_Radiuses = null;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -29,6 +31,30 @@ for (int i = 0; i < args.Length; i++)
     if (argument is "--table" or "-t") { path_Table = args[++i]; }
     else if (argument is "--model" or "-m") { path_Model = args[++i]; }
     else if (argument is "--output" or "-o") { path_Output = args[++i]; }
+    else if (argument is "--years") { text_Years = args[++i]; }
+    else if (argument is "--radiuses") { text_Radiuses = args[++i]; }
+}
+
+DiGi.Core.Classes.Range<int>? range_Years = null;
+if (!string.IsNullOrWhiteSpace(text_Years) && text_Years!.Split("..") is string[] parts_Years && parts_Years.Length == 2 && int.TryParse(parts_Years[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int years_Min) && int.TryParse(parts_Years[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int years_Max))
+{
+    range_Years = new DiGi.Core.Classes.Range<int>(years_Min, years_Max);
+}
+
+List<double>? radiuses = null;
+if (!string.IsNullOrWhiteSpace(text_Radiuses))
+{
+    List<double> radiuses_Parsed = [];
+    foreach (string token_Raw in text_Radiuses!.Split(','))
+    {
+        string token = token_Raw.Trim();
+        if (token.Length != 0 && double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out double radius))
+        {
+            radiuses_Parsed.Add(radius);
+        }
+    }
+
+    if (radiuses_Parsed.Count != 0) { radiuses = radiuses_Parsed; }
 }
 
 if (string.IsNullOrWhiteSpace(path_Table) || !File.Exists(path_Table))
@@ -129,6 +155,72 @@ if (table_Incumbent is not null)
 
     predictors["deployed path"] = years_Deployed;
     Console.WriteLine($"Deployed path scored {years_ByReference.Count} rows");
+}
+
+// When a projection is named, narrow the table to the projected columns before scoring: a column the table does
+// not carry is read as its type default by the deployed path, which is exactly the silent degradation the guard
+// refuses in production. This measures what that degradation costs rather than assuming it is small.
+Table? Narrow(Table source, DiGi.Core.Classes.Range<int>? years, List<double>? radiuses)
+{
+    HashSet<string> names_Keep = DiGi.GIS.IO.Query.YearBuiltPredictionInputColumnNames(years, radiuses);
+    if (DiGi.GIS.IO.Constants.Column.Reference.Name is string name_Reference) { names_Keep.Add(name_Reference); }
+    if (DiGi.GIS.ML.Constants.Column.YearBuilt.Name is string name_Label) { names_Keep.Add(name_Label); }
+
+    Table result = new();
+    List<int> indexes_Keep = [];
+    foreach (DiGi.Core.IO.Table.Classes.Column column in source.Columns)
+    {
+        if (column.Name is string name && names_Keep.Contains(name))
+        {
+            result.AddColumn(name, column.Type);
+            indexes_Keep.Add(source.GetColumnIndex(name));
+        }
+    }
+
+    for (int i = 0; i < source.RowCount; i++)
+    {
+        List<object?> values = [];
+        foreach (int index in indexes_Keep) { values.Add(source.GetValue(i, index)); }
+        result.AddRow(values);
+    }
+
+    return result;
+}
+
+if (range_Years is not null || radiuses is not null)
+{
+    string label_Narrowed = "narrowed";
+    if (range_Years is not null) { label_Narrowed += string.Format(CultureInfo.InvariantCulture, " {0}", range_Years.ToString()); }
+    if (radiuses is not null)
+    {
+        List<string> radiuses_Tokens = [];
+        foreach (double radius in radiuses) { radiuses_Tokens.Add(radius.ToString(CultureInfo.InvariantCulture)); }
+        label_Narrowed += string.Format(CultureInfo.InvariantCulture, " radiuses [{0}]", string.Join(",", radiuses_Tokens));
+    }
+
+    Table? table_Predictions_Narrowed = Narrow(table, range_Years, radiuses)?.PredictedYearBuilts();
+    if (table_Predictions_Narrowed is not null)
+    {
+        int index_Reference_Narrowed = table_Predictions_Narrowed.GetColumnIndex(DiGi.GIS.IO.Constants.Column.Reference.Name);
+        int index_Predicted_Narrowed = table_Predictions_Narrowed.GetColumnIndex(DiGi.GIS.IO.Constants.Column.PredictedYearBuilt.Name);
+        Dictionary<string, double> years_ByReference_Narrowed = [];
+        for (int i = 0; i < table_Predictions_Narrowed.RowCount; i++)
+        {
+            if (table_Predictions_Narrowed.GetValue<string>(i, index_Reference_Narrowed) is string reference && table_Predictions_Narrowed.TryGetValue(i, index_Predicted_Narrowed, out double year))
+            {
+                years_ByReference_Narrowed[reference] = year;
+            }
+        }
+
+        List<double?> years_Narrowed = [];
+        foreach (string? reference in references)
+        {
+            years_Narrowed.Add(reference is not null && years_ByReference_Narrowed.TryGetValue(reference, out double year) ? year : null);
+        }
+
+        predictors[label_Narrowed] = years_Narrowed;
+        Console.WriteLine($"Narrowed projection {label_Narrowed} scored {years_ByReference_Narrowed.Count} rows");
+    }
 }
 
 if (!string.IsNullOrWhiteSpace(path_Model))

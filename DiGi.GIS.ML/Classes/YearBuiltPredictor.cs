@@ -39,12 +39,14 @@ namespace DiGi.GIS.ML.Classes
         {
             if (OrtoBuildingDetectionModel.IsModelAvailable)
             {
-                return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(true);
+                return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(true, years: OrtoBuildingDetectionModel.TrainedYears, radiuses: OrtoBuildingDetectionModel.TrainedRadiuses);
             }
 
             return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(
                 false,
-                [string.Format(System.Globalization.CultureInfo.InvariantCulture, "The year built model was not found at {0}. The trained model file must be present beside the runner.", OrtoBuildingDetectionModel.ResolvedModelPath)]);
+                [string.Format(System.Globalization.CultureInfo.InvariantCulture, "The year built model was not found at {0}. The trained model file must be present beside the runner.", OrtoBuildingDetectionModel.ResolvedModelPath)],
+                years: OrtoBuildingDetectionModel.TrainedYears,
+                radiuses: OrtoBuildingDetectionModel.TrainedRadiuses);
         }
 
         /// <summary>
