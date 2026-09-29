@@ -1,6 +1,7 @@
 using DiGi.Core.IO.DelimitedData;
 using DiGi.Core.IO.DelimitedData.Enums;
 using DiGi.Core.IO.Table.Classes;
+using DiGi.GIS.IO;
 using DiGi.GIS.ML;
 using DiGi.GIS.ML.Classes;
 using DiGi.GIS.ML.EvaluationConsoleApp;
@@ -13,13 +14,16 @@ using System.Text;
 // Scores every predictor on the same holdouts and reports them side by side.
 //
 // Usage: YearBuiltPredictionEvaluationConsoleApp --table <training.tsv> --model <new.mlnet>
-//                                               [--incumbent <old.mlnet>] [--output <report.txt>]
+//                                               [--incumbent <old.mlnet>] [--manifest <dataset_references.tsv>] [--output <report.txt>]
 //
-// Exit codes: 0 reported, 1 arguments, 2 the table or a model could not be read.
+// --manifest adds a clean-holdout row: the holdout references the YOLO dataset builder flags Legacy = false.
+//
+// Exit codes: 0 reported, 1 arguments, 2 the table, a model or the manifest could not be read.
 
 string? path_Table = null;
 string? path_Model = null;
 string? path_Output = null;
+string? path_Manifest = null;
 string? text_Years = null;
 string? text_Radiuses = null;
 
@@ -31,6 +35,7 @@ for (int i = 0; i < args.Length; i++)
     if (argument is "--table" or "-t") { path_Table = args[++i]; }
     else if (argument is "--model" or "-m") { path_Model = args[++i]; }
     else if (argument is "--output" or "-o") { path_Output = args[++i]; }
+    else if (argument is "--manifest") { path_Manifest = args[++i]; }
     else if (argument is "--years") { text_Years = args[++i]; }
     else if (argument is "--radiuses") { text_Radiuses = args[++i]; }
 }
@@ -59,7 +64,7 @@ if (!string.IsNullOrWhiteSpace(text_Radiuses))
 
 if (string.IsNullOrWhiteSpace(path_Table) || !File.Exists(path_Table))
 {
-    Console.WriteLine("Usage: YearBuiltPredictionEvaluationConsoleApp --table <training.tsv> --model <new.mlnet> [--output <report.txt>]");
+    Console.WriteLine("Usage: YearBuiltPredictionEvaluationConsoleApp --table <training.tsv> --model <new.mlnet> [--manifest <dataset_references.tsv>] [--output <report.txt>]");
     return 1;
 }
 
@@ -89,38 +94,36 @@ for (int i = 0; i < table.RowCount; i++)
     years.Add(table.TryGetValue(i, index_Label, out double year) ? year : null);
 }
 
-// Holdout membership is a property of the row, not of a shuffle - see Query.Split.
+// Holdout membership is a property of the row, not of a shuffle - see DiGi.GIS.IO.Query.Holdouts.
 Dictionary<string, List<bool>> splits = new()
 {
-    ["random 20% (by reference)"] = DiGi.GIS.ML.EvaluationConsoleApp.Query.Split(references),
-    ["grouped 20% (by subdivision)"] = DiGi.GIS.ML.EvaluationConsoleApp.Query.Split(subdivisions),
+    ["random 20% (by reference)"] = references.Holdouts(),
+    ["grouped 20% (by subdivision)"] = subdivisions.Holdouts(),
 };
+
+if (!string.IsNullOrWhiteSpace(path_Manifest))
+{
+    // A manifest that cannot be trusted stops the run: reading it as all-clean would report a legacy score as an unseen one.
+    Dictionary<string, bool>? legacyFlags = DiGi.Core.IO.DelimitedData.Create.Table(path_Manifest, DelimitedDataSeparator.Tab).LegacyFlags();
+    if (legacyFlags is null)
+    {
+        Console.WriteLine($"[ERROR] the manifest could not be read, or lacks a 'Reference' or 'Legacy' column: {path_Manifest}");
+        return 2;
+    }
+
+    List<bool> holdouts_Clean = references.CleanHoldouts(splits["random 20% (by reference)"], legacyFlags);
+    splits["clean 20% (manifest, not Legacy)"] = holdouts_Clean;
+    Console.WriteLine($"Manifest {path_Manifest}: {legacyFlags.Count} references, {holdouts_Clean.FindAll(x => x).Count} clean holdout rows");
+}
 
 // The predictors that need no model at all. The bar the retrain has to clear is the third.
 List<double?> years_Constant2008 = [];
 List<double?> years_FirstDetection = [];
 
-int[] indexes_Confidence = new int[18];
-for (int y = 2008; y <= 2025; y++)
-{
-    indexes_Confidence[y - 2008] = table.GetColumnIndex($"{DiGi.GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence} {y}");
-}
-
-for (int i = 0; i < table.RowCount; i++)
+foreach (short year_First in table.FirstDetectionYears())
 {
     years_Constant2008.Add(2008);
-
-    double? year_First = null;
-    for (int k = 0; k < indexes_Confidence.Length; k++)
-    {
-        if (indexes_Confidence[k] >= 0 && table.TryGetValue(i, indexes_Confidence[k], out double confidence) && confidence > 0)
-        {
-            year_First = 2008 + k;
-            break;
-        }
-    }
-
-    years_FirstDetection.Add(year_First ?? 2008);
+    years_FirstDetection.Add(year_First);
 }
 
 Console.WriteLine($"Loaded {table.RowCount} rows from {path_Table}");

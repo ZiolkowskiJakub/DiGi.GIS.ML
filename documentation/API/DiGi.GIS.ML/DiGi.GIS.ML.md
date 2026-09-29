@@ -78,7 +78,7 @@ The stored feature table to draw rows from\.
 
 `years_ByReference` [System\.Collections\.Generic\.IDictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.idictionary-2 'System\.Collections\.Generic\.IDictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.idictionary-2 'System\.Collections\.Generic\.IDictionary\`2')[System\.Int16](https://learn.microsoft.com/en-us/dotnet/api/system.int16 'System\.Int16')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.idictionary-2 'System\.Collections\.Generic\.IDictionary\`2')
 
-The construction year of each labelled building, by reference, as returned by `Query.YearBuiltLabels`\.
+The construction year of each labelled building, by reference, as returned by `DiGi.GIS.IO.Query.YearBuiltLabels`\.
 
 <a name='DiGi.GIS.ML.Create.YearBuiltPredictionTrainingTable(thisDiGi.Core.IO.Table.Classes.Table,System.Collections.Generic.IDictionary_string,short_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).years'></a>
 
@@ -125,7 +125,7 @@ The stored feature tables to draw rows from, typically one page or one county ea
 
 `years_ByReference` [System\.Collections\.Generic\.IDictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.idictionary-2 'System\.Collections\.Generic\.IDictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.idictionary-2 'System\.Collections\.Generic\.IDictionary\`2')[System\.Int16](https://learn.microsoft.com/en-us/dotnet/api/system.int16 'System\.Int16')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.idictionary-2 'System\.Collections\.Generic\.IDictionary\`2')
 
-The construction year of each labelled building, by reference, as returned by `Query.YearBuiltLabels`\.
+The construction year of each labelled building, by reference, as returned by `DiGi.GIS.IO.Query.YearBuiltLabels`\.
 
 <a name='DiGi.GIS.ML.Create.YearBuiltPredictionTrainingTable(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_,System.Collections.Generic.IDictionary_string,short_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).years'></a>
 
@@ -153,6 +153,66 @@ public static class Query
 
 Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') → Query
 ### Methods
+
+<a name='DiGi.GIS.ML.Query.CleanHoldouts(thisSystem.Collections.Generic.IEnumerable_string_,System.Collections.Generic.IEnumerable_bool_,System.Collections.Generic.Dictionary_string,bool_)'></a>
+
+## Query\.CleanHoldouts\(this IEnumerable\<string\>, IEnumerable\<bool\>, Dictionary\<string,bool\>\) Method
+
+Narrows a holdout to the buildings the detector's previous training cannot have seen\.
+
+A row is clean when it is in the holdout and its reference is in the manifest with `Legacy = false`. A reference absent from the manifest is unknown, not clean, and is left out.
+
+```csharp
+public static System.Collections.Generic.List<bool> CleanHoldouts(this System.Collections.Generic.IEnumerable<string?>? references, System.Collections.Generic.IEnumerable<bool>? holdouts, System.Collections.Generic.Dictionary<string,bool>? legacyFlags);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Query.CleanHoldouts(thisSystem.Collections.Generic.IEnumerable_string_,System.Collections.Generic.IEnumerable_bool_,System.Collections.Generic.Dictionary_string,bool_).references'></a>
+
+`references` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The building reference of each row, in row order\.
+
+<a name='DiGi.GIS.ML.Query.CleanHoldouts(thisSystem.Collections.Generic.IEnumerable_string_,System.Collections.Generic.IEnumerable_bool_,System.Collections.Generic.Dictionary_string,bool_).holdouts'></a>
+
+`holdouts` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+True for each row in the holdout, in row order, as returned by `DiGi.GIS.IO.Query.Holdouts`\.
+
+<a name='DiGi.GIS.ML.Query.CleanHoldouts(thisSystem.Collections.Generic.IEnumerable_string_,System.Collections.Generic.IEnumerable_bool_,System.Collections.Generic.Dictionary_string,bool_).legacyFlags'></a>
+
+`legacyFlags` [System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')
+
+The `Legacy` flag by reference, as returned by [LegacyFlags\(this Table\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.LegacyFlags(thisDiGi.Core.IO.Table.Classes.Table) 'DiGi\.GIS\.ML\.Query\.LegacyFlags\(this DiGi\.Core\.IO\.Table\.Classes\.Table\)')\.
+
+#### Returns
+[System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  
+True for each clean holdout row, in row order\. Empty when any argument is null\.
+
+<a name='DiGi.GIS.ML.Query.LegacyFlags(thisDiGi.Core.IO.Table.Classes.Table)'></a>
+
+## Query\.LegacyFlags\(this Table\) Method
+
+Reads the `Legacy` flag of each building from the `dataset_references.tsv` manifest written by the YOLO dataset builder \(DiGi\.GIS\.YOLO\.UI\)\.
+
+The columns are read by name: `Reference` and `Legacy`. The manifest is a file contract only - this library has no reference to DiGi.GIS.YOLO.UI. This method reads the flag, it does not re-derive it: the dataset builder decides which buildings `train8` saw.
+
+A manifest that lacks either column, or holds a `Legacy` value that is not a boolean, is refused with null rather than read as all-clean: a clean holdout that silently includes legacy buildings would report an inflated score as an unseen one.
+
+```csharp
+public static System.Collections.Generic.Dictionary<string,bool>? LegacyFlags(this DiGi.Core.IO.Table.Classes.Table? table);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Query.LegacyFlags(thisDiGi.Core.IO.Table.Classes.Table).table'></a>
+
+`table` [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')
+
+The manifest table, or null\.
+
+#### Returns
+[System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')  
+The `Legacy` flag by reference, or null when the manifest is null, lacks a required column or holds an unreadable flag\.
 
 <a name='DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table)'></a>
 
@@ -182,53 +242,3 @@ The table containing building features, including a reference column\.
 #### Returns
 [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')  
 A new table carrying the reference and predicted year built columns, or null if the input table is null or lacks a reference column\.
-
-<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisDiGi.Core.IO.Table.Classes.Table)'></a>
-
-## Query\.YearBuiltLabels\(this Table\) Method
-
-Extracts the training labels of one stored building data table, by building reference\.
-
-Delegates to the IEnumerable<Table?> overload with a single element so the two cannot disagree.
-
-```csharp
-public static System.Collections.Generic.Dictionary<string,short> YearBuiltLabels(this DiGi.Core.IO.Table.Classes.Table? table);
-```
-#### Parameters
-
-<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisDiGi.Core.IO.Table.Classes.Table).table'></a>
-
-`table` [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')
-
-The stored building data table to take labels from, or null\.
-
-#### Returns
-[System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Int16](https://learn.microsoft.com/en-us/dotnet/api/system.int16 'System\.Int16')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')  
-The construction year of each labelled building, by reference\. Empty when the table is null or holds no labels\.
-
-<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_)'></a>
-
-## Query\.YearBuiltLabels\(this IEnumerable\<Table\>\) Method
-
-Extracts the training labels from the stored `User year built` column, by building reference\.
-
-The value is the most frequent exact user year over every stored record of the building. The rule and its tie-breaks are defined once, on `DiGi.GIS.Query.MostFrequentUserYearBuilt`, and applied when `DiGi.GIS.IO.Modify.Update_Building2D_YearBuilt` writes the column. This method reads, it does not re-derive.
-
-Only this column is read, because the two year built columns beside it are the regressor's own territory. `Predicted year built` is this model's own output, and `Calculated year built` equals the prediction wherever no user year exists: on the counties this model trains on the stored user and predicted years disagree on roughly a quarter of the buildings, so reading either would train the regressor on its predecessor, which reads as an accuracy gain rather than as a defect.
-
-An empty cell is an unlabelled building, not year zero. A table without the column - a county the Year Built update has not reached - gives no labels.
-
-```csharp
-public static System.Collections.Generic.Dictionary<string,short> YearBuiltLabels(this System.Collections.Generic.IEnumerable<DiGi.Core.IO.Table.Classes.Table?>? tables);
-```
-#### Parameters
-
-<a name='DiGi.GIS.ML.Query.YearBuiltLabels(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_).tables'></a>
-
-`tables` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
-
-The stored building data tables to take labels from, typically one page or one county each\.
-
-#### Returns
-[System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Int16](https://learn.microsoft.com/en-us/dotnet/api/system.int16 'System\.Int16')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')  
-The construction year of each labelled building, by reference\. Empty when nothing was labelled\.

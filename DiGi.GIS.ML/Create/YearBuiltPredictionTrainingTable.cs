@@ -16,7 +16,7 @@ namespace DiGi.GIS.ML
         /// <para>Only a labelled building becomes a row. A building with no label is skipped rather than defaulted, because a building whose year nobody knows is not a building built in year zero.</para>
         /// </summary>
         /// <param name="tables">The stored feature tables to draw rows from, typically one page or one county each.</param>
-        /// <param name="years_ByReference">The construction year of each labelled building, by reference, as returned by <c>Query.YearBuiltLabels</c>.</param>
+        /// <param name="years_ByReference">The construction year of each labelled building, by reference, as returned by <c>DiGi.GIS.IO.Query.YearBuiltLabels</c>.</param>
         /// <param name="years">The range of years for the detection and population features. Defaults to 2008..2025 when null.</param>
         /// <param name="radiuses">The radiuses for the radial ratio features. Defaults to 200, 400, 600, 1000 when null.</param>
         /// <returns>The training table, or null when there is nothing to build one from.</returns>
@@ -161,7 +161,7 @@ namespace DiGi.GIS.ML
         /// Builds the Year Built prediction training table from one stored building feature table and the labels of those buildings.
         /// </summary>
         /// <param name="table">The stored feature table to draw rows from.</param>
-        /// <param name="years_ByReference">The construction year of each labelled building, by reference, as returned by <c>Query.YearBuiltLabels</c>.</param>
+        /// <param name="years_ByReference">The construction year of each labelled building, by reference, as returned by <c>DiGi.GIS.IO.Query.YearBuiltLabels</c>.</param>
         /// <param name="years">The range of years for the detection and population features. Defaults to 2008..2025 when null.</param>
         /// <param name="radiuses">The radiuses for the radial ratio features. Defaults to 200, 400, 600, 1000 when null.</param>
         /// <returns>The training table, or null when there is nothing to build one from.</returns>

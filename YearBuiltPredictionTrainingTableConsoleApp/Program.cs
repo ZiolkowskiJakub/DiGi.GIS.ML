@@ -135,10 +135,7 @@ foreach (int countyId in countyIds)
         continue;
     }
 
-    // TODO [YearBuiltLabelsMove]: fully qualified while both DiGi.GIS.IO.Query.YearBuiltLabels and the local
-    // DiGi.GIS.ML.Query.YearBuiltLabels exist - the unqualified call is CS0121-ambiguous. Delete the qualification
-    // (and the local copy) once Part 1 of DiGi.GIS.ML#13 switches this caller to DiGi.GIS.IO.Query.YearBuiltLabels.
-    Dictionary<string, short> years_County = DiGi.GIS.ML.Query.YearBuiltLabels(tables_Label);
+    Dictionary<string, short> years_County = DiGi.GIS.IO.Query.YearBuiltLabels(tables_Label);
 
     if (years_County.Count == 0)
     {
