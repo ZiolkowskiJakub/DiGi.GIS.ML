@@ -101,3 +101,64 @@ Narrowing the projection to 2008..2020 drops R² by about 0.10 and multiplies th
 | `DiGi.Core` | `58d548b` |
 
 Reports: `DiGi.Test/user files/reports/YearBuiltPrediction_Accuracy_Clean.txt`, `YearBuiltPrediction_Baselines.txt`.
+
+---
+
+## Retrained 2026-09-29 (ZiolkowskiJakub/DiGi.GIS.ML#11) — held
+
+The retrain on the stored `User year built` label source ran on 2026-09-29 and was **held**: no model was shipped, so this file above remains the record of the shipped model.
+
+### What was trained
+
+| | |
+|---|---|
+| Table | 24 047 rows × 174 columns, one per labelled building; `user files/reports/YearBuiltTraining.tsv` (this machine) |
+| Counties | 5 (10 443 rows), 204 (3 801, newly labelled by the national update), 75125 (3 640), 80328 (4 340), 104106 (1 823) |
+| Labels | the stored `User year built` column — most frequent exact user year, read, not re-derived: 18 distinct values `2008–2025`, 84.2 % `2008`. The incumbent's 20 241 references keep their labels exactly; +3 806 new references |
+| Feature list | unchanged — the table header is byte-identical to the incumbent table's (SHA-256 `71597d07…85b`); 2 of 174 columns constant (the two dead population years) |
+| Models | `mlnet` CLI 16.18.2, `LightGbmRegression` selected by AutoML over 3 600 s each: shipped candidate on all 24 047 rows (SHA-256 `1915d3f5…de7`), twin on the 19 270 non-holdout rows (SHA-256 `a11d3e81…2c`) |
+| Holdout | FNV-1a of the reference, 1 in 5 — 4 777 rows on the full table, matching `Query.Split` and the evaluation app exactly |
+
+### Measurement (twin — it never saw these rows)
+
+On the full 24 047-row table:
+
+| Split | Predictor | MAE (years) | RMSE | R² |
+|---|---|---|---|---|
+| random 20 % (by reference) | constant 2008 | 1.423 | 3.973 | −0.147 |
+| random 20 % (by reference) | first detection year | 0.568 | 2.189 | 0.652 |
+| random 20 % (by reference) | deployed path (incumbent) | 1.492 | 3.706 | 0.002 |
+| random 20 % (by reference) | **this retrain (twin)** | **0.689** | **1.646** | **0.803** |
+| grouped 20 % (by subdivision) | constant 2008 | 1.552 | 4.141 | −0.164 |
+| grouped 20 % (by subdivision) | first detection year | 0.654 | 2.292 | 0.644 |
+| grouped 20 % (by subdivision) | deployed path (incumbent) | 1.777 | 4.020 | −0.097 |
+| grouped 20 % (by subdivision) | **this retrain (twin)** | **0.307** | **1.005** | **0.932** |
+
+Isolation on the old-estate rows only — the 20 246 rows that are not county 204, same holdout rule, n = 4 012:
+
+| Predictor | MAE (years) | RMSE | R² |
+|---|---|---|---|
+| constant 2008 | 1.453 | 4.010 | −0.151 |
+| first detection year — **reproduces the [#4](https://github.com/ZiolkowskiJakub/DiGi.GIS.ML/issues/4) bar exactly** | 0.434 | 1.730 | 0.786 |
+| **this retrain (twin)** | **0.480** | **1.230** | **0.892** |
+
+The deployed-path row is valid only on the full table: the incumbent was trained on every old-estate row, so a carve of old rows alone is a fit for it, and its full-table figure is dominated by county 204, which it was never fitted on. The shipped candidate scored MAE 0.270 / RMSE 0.822 / R² 0.951 on the full-table random carve — **contaminated**, it saw those rows in training; kept for the contrast.
+
+### Why held
+
+The [#4](https://github.com/ZiolkowskiJakub/DiGi.GIS.ML/issues/4) bar — beat MAE 0.434, RMSE 1.730 and R² 0.786 simultaneously on a holdout the model has not seen, split stated — is not met: the twin's MAE is 0.689 on the full table and 0.480 on the old estate, against the 0.434 bar; RMSE and R² pass on both carves. The retrain leaves the incumbent's MAE-versus-heuristic trade essentially unchanged — the previous twin scored 0.476 / 1.217 / 0.894 on the same 4 012-row carve (administrative features on 9 699 old rows have drifted since, so the two twins are near, not identical, comparisons).
+
+Two things the measurement does settle:
+
+- **The grouped-by-subdivision split has now been validly measured for a model** (the control owed since [#4](https://github.com/ZiolkowskiJakub/DiGi.GIS.ML/issues/4)): no memorised neighbourhoods — the twin holds up (MAE 0.307) where the heuristic degrades (0.654).
+- **The heuristic itself degrades on the new table** (0.568 / 2.189 / 0.652 against the old 0.434 / 1.730 / 0.786) — county 204 and the stored-column labels are harder territory, for the model and for the ten-line rule alike.
+
+The incumbent stays shipped. The retrain's table and both models are kept in `user files/reports/` for ZiolkowskiJakub/DiGi.GIS.ML#13, which re-scores after the YOLO detector retrain rewrites the detection features.
+
+Reports: `DiGi.Test/user files/reports/YearBuiltPrediction_Accuracy_Clean_2026-09-29.txt` (twin, full table), `YearBuiltPrediction_Accuracy_2026-09-29.txt` (shipped candidate, contaminated), `YearBuiltPrediction_Accuracy_No204_2026-09-29.txt` (twin, old estate).
+
+| Repository | Commit |
+|---|---|
+| `DiGi.GIS.ML` | `c4d1e67` |
+| `DiGi.GIS.IO` | `39a8670` |
+| `DiGi.Core` | `d9c1487` |
