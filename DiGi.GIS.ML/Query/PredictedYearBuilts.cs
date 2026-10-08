@@ -3,6 +3,7 @@ using DiGi.Core.IO.Table.Classes;
 using DiGi_GIS_ML;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace DiGi.GIS.ML
 {
@@ -14,9 +15,11 @@ namespace DiGi.GIS.ML
         /// <para>A column the table does not carry reads as the type default, which is deliberate and has to stay that way: the training table is materialised the same way, so a feature absent at training and a feature absent at inference look identical to the model. Change one and the model sees a distribution it was never fitted on.</para>
         /// <para>The generated <see cref="OrtoBuildingDetectionModel.ModelInput"/> is the authority for this list. It is regenerated whenever the model is retrained, and the feature contract fact in DiGi.GIS.ML.xUnit fails if this and the allow-list stop agreeing.</para>
         /// <para>Every column name above comes from <c>DiGi.GIS.IO.Constants.Column</c> or a <c>DiGi.GIS.IO.Create</c> factory - the same sources the DiGi.GIS.IO allow-list is assembled from - so a rename there cannot silently zero a feature in this list. The generated <see cref="OrtoBuildingDetectionModel.ModelInput"/> is the one place that still matches by string: its <c>[ColumnName]</c> bindings are fixed only by a Model Builder regeneration of <c>OrtoBuildingDetectionModel.*.cs</c>, so a rename in DiGi.GIS.IO must always be followed by that regeneration.</para>
+        /// <para>Before a row is written, its score is bounded by the imagery that detected the building: a building cannot have been built after it was first confidently seen (confidence at or above <see cref="Constants.Plausibility.ConfidentDetectionThreshold"/>), falling back to the first year any confidence was reported. This is the plausibility cap added for ZiolkowskiJakub/DiGi.GIS.ML#14, where a regressor extrapolating on absolute coordinates predicted 2013-2014 for buildings the 2008 orthophoto shows.</para>
+        /// <para>The run reports - and refuses the whole table when the share after the cap exceeds <see cref="Constants.Plausibility.MaximumImplausibleShare"/> - the share of predictions later than their first confident detection year, before and after the cap, so a county whose scores have gone implausible is loudly visible before any caller writes the predictions. A run in which no scored row carries a confident detection reports the share as not evaluable and still returns the table, because there is nothing to bound the scores by.</para>
         /// </summary>
         /// <param name="table">The table containing building features, including a reference column.</param>
-        /// <returns>A new table carrying the reference and predicted year built columns, or null if the input table is null or lacks a reference column.</returns>
+        /// <returns>A new table carrying the reference and predicted year built columns, or null if the input table is null, lacks a reference column, or fails the plausibility guard.</returns>
         public static Table? PredictedYearBuilts(this Table? table)
         {
             if (table is null || table.Columns is null || table.ColumnCount == 0)
@@ -250,6 +253,15 @@ namespace DiGi.GIS.ML
                 return result;
             }
 
+            // Confidence columns in year order, for the plausibility cap: the first column reporting the
+            // building is the first year the imagery saw it.
+            int[] indexes_Prediction_Confidence = [index_Prediction_Confidence_2008, index_Prediction_Confidence_2009, index_Prediction_Confidence_2010, index_Prediction_Confidence_2011, index_Prediction_Confidence_2012, index_Prediction_Confidence_2013, index_Prediction_Confidence_2014, index_Prediction_Confidence_2015, index_Prediction_Confidence_2016, index_Prediction_Confidence_2017, index_Prediction_Confidence_2018, index_Prediction_Confidence_2019, index_Prediction_Confidence_2020, index_Prediction_Confidence_2021, index_Prediction_Confidence_2022, index_Prediction_Confidence_2023, index_Prediction_Confidence_2024, index_Prediction_Confidence_2025];
+
+            int rows_WithConfidentDetection = 0;
+            int predictions_AboveConfidentDetection_Raw = 0;
+            int predictions_AboveConfidentDetection_Final = 0;
+            int predictions_Capped = 0;
+
             for (int i = 0; i < table.RowCount; i++)
             {
                 Row? row = table.GetRow(i);
@@ -469,7 +481,70 @@ namespace DiGi.GIS.ML
                     year = ushort.MaxValue;
                 }
 
+                // Plausibility cap (ZiolkowskiJakub/DiGi.GIS.ML#14): a building cannot have been built
+                // after the imagery first saw it. Bound by the first confident detection year, falling
+                // back to the first year any confidence was reported; a row the detector never saw keeps
+                // its raw score, because there is nothing to bound it by.
+                int? year_Detected = null;
+                int? year_Confident = null;
+                for (int j = 0; j < indexes_Prediction_Confidence.Length; j++)
+                {
+                    float confidence = Single(indexes_Prediction_Confidence[j]);
+                    if (year_Detected is null && confidence > 0)
+                    {
+                        year_Detected = Constants.Plausibility.FirstPredictionYear + j;
+                    }
+
+                    if (year_Confident is null && confidence >= Constants.Plausibility.ConfidentDetectionThreshold)
+                    {
+                        year_Confident = Constants.Plausibility.FirstPredictionYear + j;
+                    }
+
+                    if (year_Detected is not null && year_Confident is not null)
+                    {
+                        break;
+                    }
+                }
+
+                if (year_Confident is int confident)
+                {
+                    rows_WithConfidentDetection++;
+                    if (year > confident)
+                    {
+                        predictions_AboveConfidentDetection_Raw++;
+                    }
+                }
+
+                if ((year_Confident ?? year_Detected) is int cap && year > cap)
+                {
+                    year = cap;
+                    predictions_Capped++;
+                }
+
+                if (year_Confident is int confident_Final && year > confident_Final)
+                {
+                    predictions_AboveConfidentDetection_Final++;
+                }
+
                 result.AddRow([reference, (ushort)year]);
+            }
+
+            if (rows_WithConfidentDetection > 0)
+            {
+                double share_Raw = (double)predictions_AboveConfidentDetection_Raw / rows_WithConfidentDetection;
+                double share_Final = (double)predictions_AboveConfidentDetection_Final / rows_WithConfidentDetection;
+
+                Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[WARN] year built plausibility: {share_Raw * 100:F1}% of predictions ({predictions_AboveConfidentDetection_Raw} of {rows_WithConfidentDetection} rows with a confident detection) are later than the first confident detection year before the plausibility cap; {share_Final * 100:F1}% ({predictions_AboveConfidentDetection_Final}) after it; {predictions_Capped} rows capped."));
+
+                if (!share_Final.IsPlausibleShare())
+                {
+                    Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[ERROR] year built plausibility guard: {share_Final * 100:F1}% of predictions are later than the first confident detection year, over the {Constants.Plausibility.MaximumImplausibleShare * 100:F1}% maximum - refusing to return predicted year built values."));
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[WARN] year built plausibility: no scored row carries a confident detection ({result.RowCount} rows scored) - the share later than the first confident detection year is not evaluable, so it is reported but not guarded."));
             }
 
             return result;

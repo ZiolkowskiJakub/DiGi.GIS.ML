@@ -189,6 +189,29 @@ The `Legacy` flag by reference, as returned by [LegacyFlags\(this Table\)](DiGi.
 [System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  
 True for each clean holdout row, in row order\. Empty when any argument is null\.
 
+<a name='DiGi.GIS.ML.Query.IsPlausibleShare(thisdouble)'></a>
+
+## Query\.IsPlausibleShare\(this double\) Method
+
+Tells whether a share of predictions later than their first confident detection year is within the plausibility maximum\.
+
+This is the refusal condition of the plausibility guard in [PredictedYearBuilts\(this Table\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table) 'DiGi\.GIS\.ML\.Query\.PredictedYearBuilts\(this DiGi\.Core\.IO\.Table\.Classes\.Table\)'). The share is allowed to sit exactly at [MaximumImplausibleShare](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.MaximumImplausibleShare 'DiGi\.GIS\.ML\.Constants\.Plausibility\.MaximumImplausibleShare'); only a share over it makes the run refuse. After the plausibility cap runs, the share is 0 by construction, so the predicate exists to pin the boundary - a future change that lets an extrapolated score through again must cross this line visibly rather than drift with it.
+
+```csharp
+public static bool IsPlausibleShare(this double share);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Query.IsPlausibleShare(thisdouble).share'></a>
+
+`share` [System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+The share of scored rows whose predicted year is later than their first confident detection year\.
+
+#### Returns
+[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')  
+True when the share is within the maximum; false when the run must refuse to return predictions\.
+
 <a name='DiGi.GIS.ML.Query.LegacyFlags(thisDiGi.Core.IO.Table.Classes.Table)'></a>
 
 ## Query\.LegacyFlags\(this Table\) Method
@@ -228,6 +251,10 @@ The generated [ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel
 
 Every column name above comes from `DiGi.GIS.IO.Constants.Column` or a `DiGi.GIS.IO.Create` factory - the same sources the DiGi.GIS.IO allow-list is assembled from - so a rename there cannot silently zero a feature in this list. The generated [ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelInput') is the one place that still matches by string: its `[ColumnName]` bindings are fixed only by a Model Builder regeneration of `OrtoBuildingDetectionModel.*.cs`, so a rename in DiGi.GIS.IO must always be followed by that regeneration.
 
+Before a row is written, its score is bounded by the imagery that detected the building: a building cannot have been built after it was first confidently seen (confidence at or above [ConfidentDetectionThreshold](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.ConfidentDetectionThreshold 'DiGi\.GIS\.ML\.Constants\.Plausibility\.ConfidentDetectionThreshold')), falling back to the first year any confidence was reported. This is the plausibility cap added for ZiolkowskiJakub/DiGi.GIS.ML#14, where a regressor extrapolating on absolute coordinates predicted 2013-2014 for buildings the 2008 orthophoto shows.
+
+The run reports - and refuses the whole table when the share after the cap exceeds [MaximumImplausibleShare](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.MaximumImplausibleShare 'DiGi\.GIS\.ML\.Constants\.Plausibility\.MaximumImplausibleShare') - the share of predictions later than their first confident detection year, before and after the cap, so a county whose scores have gone implausible is loudly visible before any caller writes the predictions. A run in which no scored row carries a confident detection reports the share as not evaluable and still returns the table, because there is nothing to bound the scores by.
+
 ```csharp
 public static DiGi.Core.IO.Table.Classes.Table? PredictedYearBuilts(this DiGi.Core.IO.Table.Classes.Table? table);
 ```
@@ -241,4 +268,4 @@ The table containing building features, including a reference column\.
 
 #### Returns
 [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')  
-A new table carrying the reference and predicted year built columns, or null if the input table is null or lacks a reference column\.
+A new table carrying the reference and predicted year built columns, or null if the input table is null, lacks a reference column, or fails the plausibility guard\.
