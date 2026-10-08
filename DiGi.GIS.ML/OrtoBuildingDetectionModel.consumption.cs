@@ -778,10 +778,10 @@ namespace DiGi_GIS_ML
             public float[] Building_Phase { get; set; } = [];
 
             [ColumnName(@"Is residential")]
-            public float[] Is_residential { get; set; } = [];
+            public float Is_residential { get; set; }
 
             [ColumnName(@"Is occupied")]
-            public float[] Is_occupied { get; set; } = [];
+            public float Is_occupied { get; set; }
 
             [ColumnName(@"Voivodeship name")]
             public float[] Voivodeship_name { get; set; } = [];

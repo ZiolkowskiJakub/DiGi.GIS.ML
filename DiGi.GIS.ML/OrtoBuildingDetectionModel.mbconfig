@@ -57,7 +57,7 @@
         "ColumnName": "Cardinal direction",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -153,7 +153,7 @@
         "ColumnName": "Calculated Building Shape",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -161,7 +161,7 @@
         "ColumnName": "Building general function",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -169,7 +169,7 @@
         "ColumnName": "Building specific functions",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -177,23 +177,23 @@
         "ColumnName": "Building Phase",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
       {
         "ColumnName": "Is residential",
         "ColumnPurpose": "Feature",
-        "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "ColumnDataFormat": "Boolean",
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
       {
         "ColumnName": "Is occupied",
         "ColumnPurpose": "Feature",
-        "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "ColumnDataFormat": "Boolean",
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -201,7 +201,7 @@
         "ColumnName": "Voivodeship name",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -209,7 +209,7 @@
         "ColumnName": "County name",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -225,7 +225,7 @@
         "ColumnName": "Municipality name",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -233,7 +233,7 @@
         "ColumnName": "Subdivision name",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -249,7 +249,7 @@
         "ColumnName": "Settlement type",
         "ColumnPurpose": "Feature",
         "ColumnDataFormat": "String",
-        "IsCategorical": true,
+        "IsCategorical": false,
         "Type": "Column",
         "Version": 5
       },
@@ -1416,19 +1416,9 @@
   "TrainingOption": {
     "Version": 2,
     "Subsampling": false,
-    "Tuner": "eci-cfo",
     "Type": "RegressionTrainingOption",
     "TrainingTime": 3600,
-    "OptimizeMetric": "RSquared",
     "LabelColumn": "Year built",
-    "AvailableTrainers": [
-      "SDCA",
-      "LBFGS",
-      "LGBM",
-      "FASTTREE",
-      "FASTTREE-DISKTRANSPOSE",
-      "FASTFOREST"
-    ],
     "ValidationOption": {
       "Version": 0,
       "Type": "TrainValidateSplitValidationOption",
