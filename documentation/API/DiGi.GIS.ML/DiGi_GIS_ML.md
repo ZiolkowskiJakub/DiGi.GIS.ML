@@ -47,6 +47,21 @@ public static bool IsModelAvailable { get; }
 #### Property Value
 [System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')
 
+<a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelSHA256'></a>
+
+## OrtoBuildingDetectionModel\.ModelSHA256 Property
+
+Gets the lowercase hexadecimal SHA\-256 of the trained model file \- the identity `OrtoBuildingDetectionModel.provenance.md` records and the runner stamps on every prediction \(ZiolkowskiJakub/DiGi\.GIS\.YOLO\.UI\#26\) \- or null when the file is absent or cannot be read\.
+
+Hashed on every read, not remembered: the file is replaced in place when a model ships, and the readiness probe that reads this runs once per run.
+
+```csharp
+public static string? ModelSHA256 { get; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
 <a name='DiGi_GIS_ML.OrtoBuildingDetectionModel.ResolvedModelPath'></a>
 
 ## OrtoBuildingDetectionModel\.ResolvedModelPath Property

@@ -34,12 +34,23 @@ namespace DiGi.GIS.ML.Classes
         /// Reports whether this predictor can score at all.
         /// <para>Answers from the generated model's readiness surface: the trained file must be present at its resolved path, or the first scoring batch throws and the Lazy caches the failure for the life of the process.</para>
         /// </summary>
-        /// <returns>The readiness of this predictor - runnable when the model file is present, otherwise not runnable, carrying the path it looked for.</returns>
+        /// <para>It also carries the model's identity, the SHA-256 of the model file, which the runner stamps on every prediction. A file that is present but cannot be read to identify it is not runnable: predictions stored with no record of the model that made them are what ZiolkowskiJakub/DiGi.GIS.YOLO.UI#26 removed.</para>
+        /// <returns>The readiness of this predictor - runnable, with the model's identity, when the model file is present and readable, otherwise not runnable, carrying the path it looked for.</returns>
         public DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness YearBuiltPredictorReadiness()
         {
             if (OrtoBuildingDetectionModel.IsModelAvailable)
             {
-                return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(true, years: OrtoBuildingDetectionModel.TrainedYears, radiuses: OrtoBuildingDetectionModel.TrainedRadiuses);
+                string? modelSHA256 = OrtoBuildingDetectionModel.ModelSHA256;
+                if (modelSHA256 is not null)
+                {
+                    return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(true, years: OrtoBuildingDetectionModel.TrainedYears, radiuses: OrtoBuildingDetectionModel.TrainedRadiuses, modelId: modelSHA256);
+                }
+
+                return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(
+                    false,
+                    [string.Format(System.Globalization.CultureInfo.InvariantCulture, "The year built model at {0} could not be read to identify it.", OrtoBuildingDetectionModel.ResolvedModelPath)],
+                    years: OrtoBuildingDetectionModel.TrainedYears,
+                    radiuses: OrtoBuildingDetectionModel.TrainedRadiuses);
             }
 
             return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(

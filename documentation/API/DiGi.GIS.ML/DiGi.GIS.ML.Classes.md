@@ -303,4 +303,4 @@ Implements [YearBuiltPredictorReadiness\(\)](https://learn.microsoft.com/en-us/d
 
 #### Returns
 [DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.io.classes.yearbuiltpredictorreadiness 'DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness')  
-The readiness of this predictor \- runnable when the model file is present, otherwise not runnable, carrying the path it looked for\.
+The readiness of this predictor \- runnable, with the model's identity, when the model file is present and readable, otherwise not runnable, carrying the path it looked for\.

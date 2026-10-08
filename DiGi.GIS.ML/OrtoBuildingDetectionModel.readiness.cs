@@ -17,6 +17,36 @@ namespace DiGi_GIS_ML
         /// <summary>Gets the resolved model path, for the diagnostic when it is not present.</summary>
         public static string ResolvedModelPath => MLNetModelPath;
 
+        /// <summary>
+        /// Gets the lowercase hexadecimal SHA-256 of the trained model file - the identity <c>OrtoBuildingDetectionModel.provenance.md</c> records and the runner stamps on every prediction (ZiolkowskiJakub/DiGi.GIS.YOLO.UI#26) - or null when the file is absent or cannot be read.
+        /// <para>Hashed on every read, not remembered: the file is replaced in place when a model ships, and the readiness probe that reads this runs once per run.</para>
+        /// </summary>
+        public static string? ModelSHA256
+        {
+            get
+            {
+                string path = MLNetModelPath;
+                if (!File.Exists(path))
+                {
+                    return null;
+                }
+
+                try
+                {
+                    using FileStream fileStream = File.OpenRead(path);
+                    return System.Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fileStream)).ToLowerInvariant();
+                }
+                catch (IOException)
+                {
+                    return null;
+                }
+                catch (System.UnauthorizedAccessException)
+                {
+                    return null;
+                }
+            }
+        }
+
         /// <summary>Gets the year range this model was trained on. A retrain must update this, together with <see cref="TrainedRadiuses"/>.</summary>
         public static Range<int> TrainedYears { get; } = new(2008, 2025);
 
