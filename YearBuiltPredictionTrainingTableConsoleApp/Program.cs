@@ -17,18 +17,27 @@ using System.Threading.Tasks;
 
 // Assembles the Year Built prediction training table from the deployed database and writes it as a TSV.
 //
-// Usage: YearBuiltPredictionTrainingTableConsoleApp --output <path.tsv> --counties 104106,75125,80328,5
+// Usage: YearBuiltPredictionTrainingTableConsoleApp --output <path.tsv> --counties 104106,75125,80328,5 [--unlabelled]
+//
+// --unlabelled writes the input table instead: every building of the counties, labelled or not, projected exactly as a
+// training row would be but without the label. It is what a county with no labels is scored and judged from
+// (YearBuiltPredictionEvaluationConsoleApp, ZiolkowskiJakub/DiGi.GIS.ML#15).
 //
 // Exit codes: 0 assembled, 1 argument or configuration error, 2 nothing could be read, 3 no key.
 
 string? path_Output = null;
 List<int> countyIds = [];
+bool unlabelled = false;
 
 for (int i = 0; i < args.Length; i++)
 {
     if ((string.Equals(args[i], "--output", StringComparison.OrdinalIgnoreCase) || string.Equals(args[i], "-o", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
     {
         path_Output = args[++i];
+    }
+    else if (string.Equals(args[i], "--unlabelled", StringComparison.OrdinalIgnoreCase))
+    {
+        unlabelled = true;
     }
     else if ((string.Equals(args[i], "--counties", StringComparison.OrdinalIgnoreCase) || string.Equals(args[i], "-c", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
     {
@@ -44,7 +53,7 @@ for (int i = 0; i < args.Length; i++)
 
 if (string.IsNullOrWhiteSpace(path_Output) || countyIds.Count == 0)
 {
-    Console.WriteLine("Usage: YearBuiltPredictionTrainingTableConsoleApp --output <path.tsv> --counties <id,id,...>");
+    Console.WriteLine("Usage: YearBuiltPredictionTrainingTableConsoleApp --output <path.tsv> --counties <id,id,...> [--unlabelled]");
     Console.WriteLine("A county is named by its identifier, never by its four character code.");
     return 1;
 }
@@ -98,6 +107,37 @@ List<Table?> tables = [];
 foreach (int countyId in countyIds)
 {
     Console.WriteLine($"County {countyId}");
+
+    if (unlabelled)
+    {
+        // Every building of the county, paged by reference through the same projection the training rows use.
+        string? cursor_Features = null;
+        int rowCount_Features = 0;
+        int pageCount_Features = 0;
+        int rowCount_FeaturePage = 0;
+        do
+        {
+            Table? table_Features = await gisWebAPIManager.BuildingDataTableAsync(countyId, columnUniqueIds, cursor_Features, DiGi.GIS.ML.ConsoleApp.Constants.Count.FeatureRow_Maximum, cancellationToken: cancellationToken);
+            if (table_Features is null)
+            {
+                // A partial county would be judged as if it were whole; stop reading it and say so.
+                Console.WriteLine("  [WARN] a page of feature rows could not be read - the county is incomplete");
+                break;
+            }
+
+            tables.Add(table_Features);
+            pageCount_Features++;
+            rowCount_FeaturePage = table_Features.RowCount;
+            rowCount_Features += rowCount_FeaturePage;
+
+            string? reference_Last = rowCount_FeaturePage == 0 ? null : table_Features.GetValue<string>(rowCount_FeaturePage - 1, table_Features.GetColumnIndex(DiGi.GIS.IO.Constants.Column.Reference.Name));
+            cursor_Features = string.IsNullOrWhiteSpace(reference_Last) ? null : reference_Last;
+        }
+        while (rowCount_FeaturePage == DiGi.GIS.ML.ConsoleApp.Constants.Count.FeatureRow_Maximum && cursor_Features is not null);
+
+        Console.WriteLine($"  {rowCount_Features} feature rows read over {pageCount_Features} page(s)");
+        continue;
+    }
 
     // The label is the stored 'User year built' column, paged by reference. The column is written once by the
     // Year Built building data update, so reading it back is the finished label - no selection on the client.
@@ -181,10 +221,10 @@ foreach (int countyId in countyIds)
     Console.WriteLine($"  {rowCount_County} feature rows read over {pageCount_County} page(s)");
 }
 
-Table? table_Training = tables.YearBuiltPredictionTrainingTable(years_ByReference);
+Table? table_Training = unlabelled ? tables.YearBuiltPredictionInputTable() : tables.YearBuiltPredictionTrainingTable(years_ByReference);
 if (table_Training is null || table_Training.RowCount == 0)
 {
-    Console.WriteLine("[ERROR] nothing could be assembled - no labelled building had a feature row.");
+    Console.WriteLine(unlabelled ? "[ERROR] nothing could be assembled - no building had a feature row." : "[ERROR] nothing could be assembled - no labelled building had a feature row.");
     return 2;
 }
 

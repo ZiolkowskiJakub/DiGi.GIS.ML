@@ -2,7 +2,65 @@
 
 What `OrtoBuildingDetectionModel.mlnet` was trained on, how it was measured, and what was decided along the way. Without this, the next person cannot tell which data a model came from.
 
-## Shipped 2026-10-08 (ZiolkowskiJakub/DiGi.GIS.ML#13)
+## Retired from production 2026-10-09 (ZiolkowskiJakub/DiGi.GIS.ML#15)
+
+**The year built is no longer predicted by this model.** `Query.PredictedYearBuilts` now uses the first-detection heuristic: the first year the detector saw the building with confidence ≥ 0.5, falling back to the first year with any detection. A building that was never detected is left out. The runner stamps `first-confident-detection@0.5` (`Constants.Heuristic.Id`) on every prediction instead of a model SHA-256. The model, its generated code and the training and evaluation tools stay here as the baseline for the parked feature redesign (ZiolkowskiJakub/DiGi.GIS.ML#17). Any new model has to beat the heuristic on a county it was not trained on before it returns to production.
+
+### Why: the regressor does not transfer to a county it was not trained on
+
+#15 set out to retrain without absolute coordinates and identity features, because #14 had shown that coordinates move the predictions. To measure transfer honestly, twins were trained **without county 80328** (`mlnet` 16.18.2, 3 600 s each, three or two in parallel) and scored on 80328 (labelled, 4 340 rows) and on county part 8956 (unlabelled, 5 579 buildings). "Late" means predicted later than the first confident detection year. The healthy band on the labelled counties had been ≤ 16 %.
+
+| Twin, trained without 80328 | Feature change | 80328 MAE / RMSE / R² | 80328 late | 8956 late |
+|---|---|---|---|---|
+| — | first-detection heuristic, no model | **0.145 / 0.844 / 0.957** | **0 %** | **0 %** |
+| A0 | none (the #13 feature list) | 1.377 / 1.657 / 0.834 | 76.6 % | 89.6 % |
+| A1 | minus coordinates, `County Id`, `Subdivision Id`, the four place names | 3.160 / 3.462 / 0.276 | 88.0 % | 78.0 % |
+| A2 | A1 minus `Municipality population 2008–2025` | 3.038 / 3.308 / 0.339 | 88.2 % | 80.9 % |
+| C0 | none; detection columns of a year the county has no imagery for set to `-1` | 4.513 / 4.903 / −0.453 | 89.0 % | 83.3 % |
+| C1 | A1 + the `-1` marker | 4.111 / 4.472 / −0.209 | 88.0 % | 82.4 % |
+
+A run B0/B1 left the no-imagery cells empty instead of `-1`. It is not a test of anything: ML.NET's text loader reads an empty numeric cell as `0`, so B repeated A.
+
+The same A1 twin scores county 5, which it was trained on, at MAE 0.106 and 2.6 % late. The labels are clean: 96–99 % of buildings first confidently detected in 2008 are labelled 2008 or 2009 in every large county. **The models memorise the counties they are trained on.** Coordinates were one way to recognise a county. The 18 per-year detection columns are another: every county has its own pattern of orthophoto years (80328: 2008, 2012, 2015, 2018, 2019, 2021–2024; county 5: 2008, 2010, 2013–2015, 2017, 2019–2021, 2023), so the county stays recognisable without coordinates. AutoML selects on a random row split, so it validates on the counties it trains on and rewards that memorisation. The 4–16 % "healthy" shares #14 measured on labelled counties were fits, not evidence of transfer.
+
+### The heuristic on the #13 carves (deployed path, `YearBuiltTraining_train9.tsv`)
+
+The model twin `cc815ded…` was trained on these counties, so this comparison favours it. The twin figures are its deployed-path figures from the section below.
+
+| Carve | n | heuristic (MAE / RMSE / R²) | #13 twin | previous heuristic, any confidence > 0 |
+|---|---|---|---|---|
+| full table, random 20 % | 4 953 | **0.246** / 1.413 / 0.870 | 0.338 / **1.271** / **0.896** | 0.358 / 1.797 / 0.791 |
+| #4 carve, old estate without 204 | 4 011 | **0.198** / 1.233 / 0.891 | 0.277 / **1.129** / **0.909** | 0.285 / 1.583 / 0.821 |
+| five old-estate counties | 4 774 | **0.209** / 1.268 / 0.882 | 0.304 / **1.192** / **0.897** | 0.301 / 1.632 / 0.806 |
+
+On counties it has seen, the model keeps a slightly tighter error tail (RMSE, R²). The heuristic wins on MAE everywhere, and on an unseen county it wins on every metric. Requiring confidence ≥ 0.5 before falling back cuts the old rule's MAE by about 30 %. Seven rows of the full table carry no detection at all and are left out, which is why n is 4 953 rather than 4 956. **Not measured:** the 179-row clean holdout, because its manifest is in the YOLO training directory and not on the measuring machine.
+
+Buildings dated per county through the deployed path, from `--unlabelled` tables read from `api.digiproject.uk` on 2026-10-09:
+
+| County | confident detection | weaker detection only | never detected, left out |
+|---|---|---|---|
+| 8956 | 5 536 | 11 | 32 |
+| 80328 | 4 428 | 13 | 0 |
+| 5 | 33 502 | 137 | 48 |
+| 204 | 3 794 | 5 | 26 784 (detections were written for the labelled buildings only) |
+| 75125 | 4 111 | 12 | 2 |
+| 104106 | 5 525 | 12 | 2 |
+
+Reproduce:
+- `YearBuiltPredictionTrainingTableConsoleApp --unlabelled --counties <id> --output <t.tsv>` builds the table of every building in a county.
+- `YearBuiltPredictionEvaluationConsoleApp --table <t.tsv> [--model <twin.mlnet>]` reports accuracy when the table is labelled and always reports plausibility.
+- Reports, tables and twins are in DiGi.GIS.ML `user files/reports/noloc/` on the measuring machine.
+
+| Repository | Commit |
+|---|---|
+| `DiGi.GIS.ML` | `ef852e7` (+ this change) |
+| `DiGi.GIS.IO` | `98df693` |
+| `DiGi.Core` | `5ecfa59` |
+| `DiGi.GIS.YOLO.UI` | `94a500f` |
+
+---
+
+## Shipped 2026-10-08 (ZiolkowskiJakub/DiGi.GIS.ML#13), retired from production 2026-10-09
 
 The model in this folder. It was trained on the detection features of the retrained YOLO detector **`train9_fresh`** (YOLO26x, SHA-256 `2dd833e438ffcb1352ae7675063c9f0c97ca1c39ce6410a0bfab96e8b3cbdc9a`, ZiolkowskiJakub/DiGi.GIS.YOLO.UI#12). **It is only valid with that detector:** a deployment scoring with `train8` detections hands it features it was never fitted on.
 

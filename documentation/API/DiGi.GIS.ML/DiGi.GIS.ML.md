@@ -57,6 +57,47 @@ The predicted construction years, in the same order\.
 [YearBuiltPredictionAccuracyResult](DiGi.GIS.ML.Classes.md#DiGi.GIS.ML.Classes.YearBuiltPredictionAccuracyResult 'DiGi\.GIS\.ML\.Classes\.YearBuiltPredictionAccuracyResult')  
 The measures, or null when there is no pair to measure\.
 
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionInputTable(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_)'></a>
+
+## Create\.YearBuiltPredictionInputTable\(this IEnumerable\<Table\>, Range\<int\>, IEnumerable\<double\>\) Method
+
+Builds the Year Built prediction input table from stored building feature tables: the projection the regressor scores, for every building, labelled or not\.
+
+The result is the reference, then every column of `DiGi.GIS.IO.Query.YearBuiltPredictionInputColumns` in its own order. [YearBuiltPredictionTrainingTable\(this IEnumerable&lt;Table&gt;, IDictionary&lt;string,short&gt;, Range&lt;int&gt;, IEnumerable&lt;double&gt;\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Create.YearBuiltPredictionTrainingTable(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_,System.Collections.Generic.IDictionary_string,short_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_) 'DiGi\.GIS\.ML\.Create\.YearBuiltPredictionTrainingTable\(this System\.Collections\.Generic\.IEnumerable\<DiGi\.Core\.IO\.Table\.Classes\.Table\>, System\.Collections\.Generic\.IDictionary\<string,short\>, DiGi\.Core\.Classes\.Range\<int\>, System\.Collections\.Generic\.IEnumerable\<double\>\)') is this table filtered to the labelled buildings with the label appended, so a county scored from this table is shown exactly the features a training row of the same building would have carried.
+
+<b>The schema is fixed, and that is the point of this method.</b>`Modify.Update_Building2D_YearBuiltPredictions` creates the five detection columns only for years it actually saw, so a county whose orthophoto series skips a year has no columns for it and the read comes back narrower. Concatenating those tables as they arrive would line different features up under the same position. Every allow-list column is therefore materialised for every row, and a column the source did not carry is filled with the same default the inference path would have used.
+
+That default matters more than it looks. `Query.PredictedYearBuilts` reads an absent feature as `0F`, so training on an absent feature written as anything else would show the model one distribution and the deployed pipeline another.
+
+A reference read twice - overlapping pages, or a county asked for more than once - becomes one row, the first one read.
+
+```csharp
+public static DiGi.Core.IO.Table.Classes.Table? YearBuiltPredictionInputTable(this System.Collections.Generic.IEnumerable<DiGi.Core.IO.Table.Classes.Table?>? tables, DiGi.Core.Classes.Range<int>? years=null, System.Collections.Generic.IEnumerable<double>? radiuses=null);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionInputTable(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).tables'></a>
+
+`tables` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The stored feature tables to draw rows from, typically one page or one county each\.
+
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionInputTable(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).years'></a>
+
+`years` [DiGi\.Core\.Classes\.Range&lt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/digi.core.classes.range-1 'DiGi\.Core\.Classes\.Range\`1')
+
+The range of years for the detection and population features\. Defaults to 2008\.\.2025 when null\.
+
+<a name='DiGi.GIS.ML.Create.YearBuiltPredictionInputTable(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_).radiuses'></a>
+
+`radiuses` [System\.Collections\.Generic\.IEnumerable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')[System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1 'System\.Collections\.Generic\.IEnumerable\`1')
+
+The radiuses for the radial ratio features\. Defaults to 200, 400, 600, 1000 when null\.
+
+#### Returns
+[DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')  
+The input table, or null when there is nothing to build one from\.
+
 <a name='DiGi.GIS.ML.Create.YearBuiltPredictionTrainingTable(thisDiGi.Core.IO.Table.Classes.Table,System.Collections.Generic.IDictionary_string,short_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_)'></a>
 
 ## Create\.YearBuiltPredictionTrainingTable\(this Table, IDictionary\<string,short\>, Range\<int\>, IEnumerable\<double\>\) Method
@@ -104,7 +145,7 @@ Builds the Year Built prediction training table from stored building feature tab
 
 The result is the projection the regressor is trained on: the reference, then every column of `DiGi.GIS.IO.Query.YearBuiltPredictionInputColumns` in its own order, then the label. The reference is an identifier rather than a feature and the incumbent model ignores it; it is carried so a row can be traced back to its building.
 
-<b>The schema is fixed, and that is the point of this method.</b>`Modify.Update_Building2D_YearBuiltPredictions` creates the five detection columns only for years it actually saw, so a county whose orthophoto series skips a year has no columns for it and the read comes back narrower. Concatenating those tables as they arrive would line different features up under the same position. Every allow-list column is therefore materialised for every row, and a column the source did not carry is filled with the same default the inference path would have used.
+It is [YearBuiltPredictionInputTable\(this IEnumerable&lt;Table&gt;, Range&lt;int&gt;, IEnumerable&lt;double&gt;\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Create.YearBuiltPredictionInputTable(thisSystem.Collections.Generic.IEnumerable_DiGi.Core.IO.Table.Classes.Table_,DiGi.Core.Classes.Range_int_,System.Collections.Generic.IEnumerable_double_) 'DiGi\.GIS\.ML\.Create\.YearBuiltPredictionInputTable\(this System\.Collections\.Generic\.IEnumerable\<DiGi\.Core\.IO\.Table\.Classes\.Table\>, DiGi\.Core\.Classes\.Range\<int\>, System\.Collections\.Generic\.IEnumerable\<double\>\)') filtered to the labelled buildings with the label appended. <b>The schema is fixed, and that is the point of both methods.</b>`Modify.Update_Building2D_YearBuiltPredictions` creates the five detection columns only for years it actually saw, so a county whose orthophoto series skips a year has no columns for it and the read comes back narrower. Concatenating those tables as they arrive would line different features up under the same position. Every allow-list column is therefore materialised for every row, and a column the source did not carry is filled with the same default the inference path would have used.
 
 That default matters more than it looks. `Query.PredictedYearBuilts` reads an absent feature as `0F`, so training on an absent feature written as anything else would show the model one distribution and the deployed pipeline another.
 
@@ -189,13 +230,75 @@ The `Legacy` flag by reference, as returned by [LegacyFlags\(this Table\)](DiGi.
 [System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  
 True for each clean holdout row, in row order\. Empty when any argument is null\.
 
+<a name='DiGi.GIS.ML.Query.ColumnIndex(thisDiGi.Core.IO.Table.Classes.Table,DiGi.Core.IO.Table.Classes.Column)'></a>
+
+## Query\.ColumnIndex\(this Table, Column\) Method
+
+Finds the index of a column in a table by its stored column slug first and by its display name second\.
+
+The slug is the identifier the database and the WebAPI address a column by, so a table read through the API binds whatever its display names are; the display name is the fallback for a table that came from a file. This is the resolution the deployed scoring path has always used.
+
+```csharp
+public static int ColumnIndex(this DiGi.Core.IO.Table.Classes.Table? table, DiGi.Core.IO.Table.Classes.Column? column);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Query.ColumnIndex(thisDiGi.Core.IO.Table.Classes.Table,DiGi.Core.IO.Table.Classes.Column).table'></a>
+
+`table` [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')
+
+The table to search, or null\.
+
+<a name='DiGi.GIS.ML.Query.ColumnIndex(thisDiGi.Core.IO.Table.Classes.Table,DiGi.Core.IO.Table.Classes.Column).column'></a>
+
+`column` [DiGi\.Core\.IO\.Table\.Classes\.Column](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.column 'DiGi\.Core\.IO\.Table\.Classes\.Column')
+
+The column to find, or null\.
+
+#### Returns
+[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')  
+The index of the column, or \-1 when the table or the column is null or the table does not carry it\.
+
+<a name='DiGi.GIS.ML.Query.FirstConfidentDetectionYears(thisDiGi.Core.IO.Table.Classes.Table,float)'></a>
+
+## Query\.FirstConfidentDetectionYears\(this Table, float\) Method
+
+Finds, for each row, the first year the detector saw the building with confidence at or above a threshold\.
+
+With the default threshold, [ConfidentDetectionThreshold](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.ConfidentDetectionThreshold 'DiGi\.GIS\.ML\.Constants\.Plausibility\.ConfidentDetectionThreshold'), this is the year built the heuristic of [PredictedYearBuilts\(this Table\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table) 'DiGi\.GIS\.ML\.Query\.PredictedYearBuilts\(this DiGi\.Core\.IO\.Table\.Classes\.Table\)') predicts, and the bound a prediction is judged against: a building confidently seen in a year cannot have been built after it. A threshold of 0 finds the first year the building was seen at all - any confidence above zero - which is the fallback of that heuristic.
+
+The years scanned are [Years](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Heuristic.Years 'DiGi\.GIS\.ML\.Constants\.Heuristic\.Years'), and each confidence column is resolved by [ColumnIndex\(this Table, Column\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.ColumnIndex(thisDiGi.Core.IO.Table.Classes.Table,DiGi.Core.IO.Table.Classes.Column) 'DiGi\.GIS\.ML\.Query\.ColumnIndex\(this DiGi\.Core\.IO\.Table\.Classes\.Table, DiGi\.Core\.IO\.Table\.Classes\.Column\)'), so a table read through the WebAPI binds the same way the scoring path does.
+
+Unlike `DiGi.GIS.IO.Query.FirstDetectionYears`, which falls back to a default year, a row with no detection at the threshold is `null` here: it has nothing to be dated or judged by, and a default would count it as evidence.
+
+```csharp
+public static System.Collections.Generic.List<System.Nullable<int>> FirstConfidentDetectionYears(this DiGi.Core.IO.Table.Classes.Table? table, float threshold=0.5f);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Query.FirstConfidentDetectionYears(thisDiGi.Core.IO.Table.Classes.Table,float).table'></a>
+
+`table` [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')
+
+The table carrying the per\-year `Prediction Confidence` columns, or null\.
+
+<a name='DiGi.GIS.ML.Query.FirstConfidentDetectionYears(thisDiGi.Core.IO.Table.Classes.Table,float).threshold'></a>
+
+`threshold` [System\.Single](https://learn.microsoft.com/en-us/dotnet/api/system.single 'System\.Single')
+
+The confidence a detection must reach to count\. 0 counts any confidence above zero\.
+
+#### Returns
+[System\.Collections\.Generic\.List&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')[System\.Nullable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1 'System\.Collections\.Generic\.List\`1')  
+One entry per row, in row order: the first year at the threshold, or null when the row has none\. Empty when the table is null or holds no rows\.
+
 <a name='DiGi.GIS.ML.Query.IsPlausibleShare(thisdouble)'></a>
 
 ## Query\.IsPlausibleShare\(this double\) Method
 
 Tells whether a share of predictions later than their first confident detection year is within the plausibility maximum\.
 
-This is the refusal condition of the plausibility guard in [PredictedYearBuilts\(this Table\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table) 'DiGi\.GIS\.ML\.Query\.PredictedYearBuilts\(this DiGi\.Core\.IO\.Table\.Classes\.Table\)'). The share is allowed to sit exactly at [MaximumImplausibleShare](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.MaximumImplausibleShare 'DiGi\.GIS\.ML\.Constants\.Plausibility\.MaximumImplausibleShare'); only a share over it makes the run refuse. After the plausibility cap runs, the share is 0 by construction, so the predicate exists to pin the boundary - a future change that lets an extrapolated score through again must cross this line visibly rather than drift with it.
+This is the refusal condition of the plausibility guard in [PredictedYearBuilts\(this Table\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table) 'DiGi\.GIS\.ML\.Query\.PredictedYearBuilts\(this DiGi\.Core\.IO\.Table\.Classes\.Table\)'). The share is allowed to sit exactly at [MaximumImplausibleShare](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.MaximumImplausibleShare 'DiGi\.GIS\.ML\.Constants\.Plausibility\.MaximumImplausibleShare'); only a share over it makes the run refuse. The first-detection heuristic makes the share 0 by construction, so the predicate exists to pin the boundary - a future change that lets an extrapolated score through again must cross this line visibly rather than drift with it.
 
 ```csharp
 public static bool IsPlausibleShare(this double share);
@@ -237,23 +340,40 @@ The manifest table, or null\.
 [System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')  
 The `Legacy` flag by reference, or null when the manifest is null, lacks a required column or holds an unreadable flag\.
 
+<a name='DiGi.GIS.ML.Query.PredictedYear(thisdouble)'></a>
+
+## Query\.PredictedYear\(this double\) Method
+
+Rounds a raw regressor score to the year [PredictedYearBuilts\(this Table\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table) 'DiGi\.GIS\.ML\.Query\.PredictedYearBuilts\(this DiGi\.Core\.IO\.Table\.Classes\.Table\)') writes for it\.
+
+An exact half rounds down - a score of 2008.5 is 2008 - and the result is clamped to the [System\.UInt16](https://learn.microsoft.com/en-us/dotnet/api/system.uint16 'System\.UInt16') range the predicted year column stores. Anything that judges a raw score against a detection year rounds it here first, so a measurement and the deployed path cannot disagree by a rounding rule.
+
+```csharp
+public static int PredictedYear(this double score);
+```
+#### Parameters
+
+<a name='DiGi.GIS.ML.Query.PredictedYear(thisdouble).score'></a>
+
+`score` [System\.Double](https://learn.microsoft.com/en-us/dotnet/api/system.double 'System\.Double')
+
+The raw score of the regressor\.
+
+#### Returns
+[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')  
+The predicted year, within \[0, [System\.UInt16\.MaxValue](https://learn.microsoft.com/en-us/dotnet/api/system.uint16.maxvalue 'System\.UInt16\.MaxValue')\]\.
+
 <a name='DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table)'></a>
 
 ## Query\.PredictedYearBuilts\(this Table\) Method
 
-Scores building feature rows into a predicted construction year\.
+Predicts the construction year of each building from the imagery that detected it\.
 
-Every feature is read by the column it was trained against, and every one of those columns is resolved once for the whole table before a single row is read. Resolution is by stored column slug first - the identifier the database and the WebAPI address a column by - and by display name second, so a table that came from a file rather than from the database still binds.
+A building is predicted to have been built in the first year the detector saw it with confidence at or above [ConfidentDetectionThreshold](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.ConfidentDetectionThreshold 'DiGi\.GIS\.ML\.Constants\.Plausibility\.ConfidentDetectionThreshold'), falling back to the first year it was seen at all. A building the detector never saw has nothing to be dated by and is left out of the result rather than filled with a default, as `IYearBuiltPredictor.Predict` allows.
 
-A column the table does not carry reads as the type default, which is deliberate and has to stay that way: the training table is materialised the same way, so a feature absent at training and a feature absent at inference look identical to the model. Change one and the model sees a distribution it was never fitted on.
+This heuristic replaced the `OrtoBuildingDetectionModel` regressor (ZiolkowskiJakub/DiGi.GIS.ML#15). The regressor memorised the counties it was trained on - their location, and the pattern of orthophoto years each one has - and scored any other county years too late: on held-out county 80328 every retrain put 76-89 % of buildings after their first confident detection, while this rule matched its labels with MAE 0.15. The label is itself the first year a building appears in the orthophoto record, so the first detection is its direct estimate. The model and its tooling stay in the repository for a feature redesign that has to beat this rule on a held-out county first.
 
-The generated [ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelInput') is the authority for this list. It is regenerated whenever the model is retrained, and the feature contract fact in DiGi.GIS.ML.xUnit fails if this and the allow-list stop agreeing.
-
-Every column name above comes from `DiGi.GIS.IO.Constants.Column` or a `DiGi.GIS.IO.Create` factory - the same sources the DiGi.GIS.IO allow-list is assembled from - so a rename there cannot silently zero a feature in this list. The generated [ModelInput](DiGi_GIS_ML.md#DiGi_GIS_ML.OrtoBuildingDetectionModel.ModelInput 'DiGi\_GIS\_ML\.OrtoBuildingDetectionModel\.ModelInput') is the one place that still matches by string: its `[ColumnName]` bindings are fixed only by a Model Builder regeneration of `OrtoBuildingDetectionModel.*.cs`, so a rename in DiGi.GIS.IO must always be followed by that regeneration.
-
-Before a row is written, its score is bounded by the imagery that detected the building: a building cannot have been built after it was first confidently seen (confidence at or above [ConfidentDetectionThreshold](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.ConfidentDetectionThreshold 'DiGi\.GIS\.ML\.Constants\.Plausibility\.ConfidentDetectionThreshold')), falling back to the first year any confidence was reported. This is the plausibility cap added for ZiolkowskiJakub/DiGi.GIS.ML#14, where a regressor extrapolating on absolute coordinates predicted 2013-2014 for buildings the 2008 orthophoto shows.
-
-The run reports - and refuses the whole table when the share after the cap exceeds [MaximumImplausibleShare](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.MaximumImplausibleShare 'DiGi\.GIS\.ML\.Constants\.Plausibility\.MaximumImplausibleShare') - the share of predictions later than their first confident detection year, before and after the cap, so a county whose scores have gone implausible is loudly visible before any caller writes the predictions. A run in which no scored row carries a confident detection reports the share as not evaluable and still returns the table, because there is nothing to bound the scores by.
+The run reports how many buildings were dated from a confident detection, from a weaker one only, and how many were left out. It keeps the guard of ZiolkowskiJakub/DiGi.GIS.ML#14: the share of predictions later than their first confident detection year is 0 by construction here, and the table is refused if a future change lets it exceed [MaximumImplausibleShare](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Plausibility.MaximumImplausibleShare 'DiGi\.GIS\.ML\.Constants\.Plausibility\.MaximumImplausibleShare').
 
 ```csharp
 public static DiGi.Core.IO.Table.Classes.Table? PredictedYearBuilts(this DiGi.Core.IO.Table.Classes.Table? table);
@@ -264,8 +384,8 @@ public static DiGi.Core.IO.Table.Classes.Table? PredictedYearBuilts(this DiGi.Co
 
 `table` [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')
 
-The table containing building features, including a reference column\.
+The table containing building features, including a reference column and the per\-year `Prediction Confidence` columns\.
 
 #### Returns
 [DiGi\.Core\.IO\.Table\.Classes\.Table](https://learn.microsoft.com/en-us/dotnet/api/digi.core.io.table.classes.table 'DiGi\.Core\.IO\.Table\.Classes\.Table')  
-A new table carrying the reference and predicted year built columns, or null if the input table is null, lacks a reference column, or fails the plausibility guard\.
+A new table carrying the reference and predicted year built columns, one row per detected building, or null if the input table is null, lacks a reference column, or fails the plausibility guard\.

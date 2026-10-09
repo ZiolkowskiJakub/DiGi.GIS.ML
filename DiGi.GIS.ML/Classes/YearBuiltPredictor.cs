@@ -3,7 +3,6 @@ using DiGi.Core.Classes;
 using DiGi.Core.IO;
 using DiGi.Core.IO.Table.Classes;
 using DiGi.GIS.IO.Interfaces;
-using DiGi_GIS_ML;
 using System.Collections.Generic;
 
 namespace DiGi.GIS.ML.Classes
@@ -32,32 +31,13 @@ namespace DiGi.GIS.ML.Classes
 
         /// <summary>
         /// Reports whether this predictor can score at all.
-        /// <para>Answers from the generated model's readiness surface: the trained file must be present at its resolved path, or the first scoring batch throws and the Lazy caches the failure for the life of the process.</para>
+        /// <para>The first-detection heuristic of <see cref="Query.PredictedYearBuilts"/> needs no model file, so it is always runnable (ZiolkowskiJakub/DiGi.GIS.ML#15). Its identity is <see cref="Constants.Heuristic.Id"/>, which the runner stamps on every prediction in place of a model file's SHA-256 (ZiolkowskiJakub/DiGi.GIS.YOLO.UI#26).</para>
+        /// <para>Its contract is the detection years it reads, <see cref="Constants.Heuristic.Years"/>: a run whose options narrow them would hide a building's first detection and date it late, so the runner refuses such options. No radiuses are stated, and the runner then checks the radial projection against its defaults, as before.</para>
         /// </summary>
-        /// <para>It also carries the model's identity, the SHA-256 of the model file, which the runner stamps on every prediction. A file that is present but cannot be read to identify it is not runnable: predictions stored with no record of the model that made them are what ZiolkowskiJakub/DiGi.GIS.YOLO.UI#26 removed.</para>
-        /// <returns>The readiness of this predictor - runnable, with the model's identity, when the model file is present and readable, otherwise not runnable, carrying the path it looked for.</returns>
+        /// <returns>The readiness of this predictor - always runnable, with the heuristic's identity and the detection years it reads.</returns>
         public DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness YearBuiltPredictorReadiness()
         {
-            if (OrtoBuildingDetectionModel.IsModelAvailable)
-            {
-                string? modelSHA256 = OrtoBuildingDetectionModel.ModelSHA256;
-                if (modelSHA256 is not null)
-                {
-                    return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(true, years: OrtoBuildingDetectionModel.TrainedYears, radiuses: OrtoBuildingDetectionModel.TrainedRadiuses, modelId: modelSHA256);
-                }
-
-                return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(
-                    false,
-                    [string.Format(System.Globalization.CultureInfo.InvariantCulture, "The year built model at {0} could not be read to identify it.", OrtoBuildingDetectionModel.ResolvedModelPath)],
-                    years: OrtoBuildingDetectionModel.TrainedYears,
-                    radiuses: OrtoBuildingDetectionModel.TrainedRadiuses);
-            }
-
-            return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(
-                false,
-                [string.Format(System.Globalization.CultureInfo.InvariantCulture, "The year built model was not found at {0}. The trained model file must be present beside the runner.", OrtoBuildingDetectionModel.ResolvedModelPath)],
-                years: OrtoBuildingDetectionModel.TrainedYears,
-                radiuses: OrtoBuildingDetectionModel.TrainedRadiuses);
+            return new DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness(true, years: Constants.Heuristic.Years, modelId: Constants.Heuristic.Id);
         }
 
         /// <summary>

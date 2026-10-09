@@ -293,7 +293,9 @@ A new table carrying the reference and predicted year built columns, or null if 
 
 Reports whether this predictor can score at all\.
 
-Answers from the generated model's readiness surface: the trained file must be present at its resolved path, or the first scoring batch throws and the Lazy caches the failure for the life of the process.
+The first-detection heuristic of [PredictedYearBuilts\(this Table\)](DiGi.GIS.ML.md#DiGi.GIS.ML.Query.PredictedYearBuilts(thisDiGi.Core.IO.Table.Classes.Table) 'DiGi\.GIS\.ML\.Query\.PredictedYearBuilts\(this DiGi\.Core\.IO\.Table\.Classes\.Table\)') needs no model file, so it is always runnable (ZiolkowskiJakub/DiGi.GIS.ML#15). Its identity is [Id](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Heuristic.Id 'DiGi\.GIS\.ML\.Constants\.Heuristic\.Id'), which the runner stamps on every prediction in place of a model file's SHA-256 (ZiolkowskiJakub/DiGi.GIS.YOLO.UI#26).
+
+Its contract is the detection years it reads, [Years](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Heuristic.Years 'DiGi\.GIS\.ML\.Constants\.Heuristic\.Years'): a run whose options narrow them would hide a building's first detection and date it late, so the runner refuses such options. No radiuses are stated, and the runner then checks the radial projection against its defaults, as before.
 
 ```csharp
 public DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness YearBuiltPredictorReadiness();
@@ -303,4 +305,4 @@ Implements [YearBuiltPredictorReadiness\(\)](https://learn.microsoft.com/en-us/d
 
 #### Returns
 [DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.io.classes.yearbuiltpredictorreadiness 'DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness')  
-The readiness of this predictor \- runnable, with the model's identity, when the model file is present and readable, otherwise not runnable, carrying the path it looked for\.
+The readiness of this predictor \- always runnable, with the heuristic's identity and the detection years it reads\.

@@ -1,6 +1,4 @@
-using DiGi.Core.IO;
 using DiGi.Core.IO.Table.Classes;
-using DiGi_GIS_ML;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,239 +8,25 @@ namespace DiGi.GIS.ML
     public static partial class Query
     {
         /// <summary>
-        /// Scores building feature rows into a predicted construction year.
-        /// <para>Every feature is read by the column it was trained against, and every one of those columns is resolved once for the whole table before a single row is read. Resolution is by stored column slug first - the identifier the database and the WebAPI address a column by - and by display name second, so a table that came from a file rather than from the database still binds.</para>
-        /// <para>A column the table does not carry reads as the type default, which is deliberate and has to stay that way: the training table is materialised the same way, so a feature absent at training and a feature absent at inference look identical to the model. Change one and the model sees a distribution it was never fitted on.</para>
-        /// <para>The generated <see cref="OrtoBuildingDetectionModel.ModelInput"/> is the authority for this list. It is regenerated whenever the model is retrained, and the feature contract fact in DiGi.GIS.ML.xUnit fails if this and the allow-list stop agreeing.</para>
-        /// <para>Every column name above comes from <c>DiGi.GIS.IO.Constants.Column</c> or a <c>DiGi.GIS.IO.Create</c> factory - the same sources the DiGi.GIS.IO allow-list is assembled from - so a rename there cannot silently zero a feature in this list. The generated <see cref="OrtoBuildingDetectionModel.ModelInput"/> is the one place that still matches by string: its <c>[ColumnName]</c> bindings are fixed only by a Model Builder regeneration of <c>OrtoBuildingDetectionModel.*.cs</c>, so a rename in DiGi.GIS.IO must always be followed by that regeneration.</para>
-        /// <para>Before a row is written, its score is bounded by the imagery that detected the building: a building cannot have been built after it was first confidently seen (confidence at or above <see cref="Constants.Plausibility.ConfidentDetectionThreshold"/>), falling back to the first year any confidence was reported. This is the plausibility cap added for ZiolkowskiJakub/DiGi.GIS.ML#14, where a regressor extrapolating on absolute coordinates predicted 2013-2014 for buildings the 2008 orthophoto shows.</para>
-        /// <para>The run reports - and refuses the whole table when the share after the cap exceeds <see cref="Constants.Plausibility.MaximumImplausibleShare"/> - the share of predictions later than their first confident detection year, before and after the cap, so a county whose scores have gone implausible is loudly visible before any caller writes the predictions. A run in which no scored row carries a confident detection reports the share as not evaluable and still returns the table, because there is nothing to bound the scores by.</para>
+        /// Predicts the construction year of each building from the imagery that detected it.
+        /// <para>A building is predicted to have been built in the first year the detector saw it with confidence at or above <see cref="Constants.Plausibility.ConfidentDetectionThreshold"/>, falling back to the first year it was seen at all. A building the detector never saw has nothing to be dated by and is left out of the result rather than filled with a default, as <c>IYearBuiltPredictor.Predict</c> allows.</para>
+        /// <para>This heuristic replaced the <c>OrtoBuildingDetectionModel</c> regressor (ZiolkowskiJakub/DiGi.GIS.ML#15). The regressor memorised the counties it was trained on - their location, and the pattern of orthophoto years each one has - and scored any other county years too late: on held-out county 80328 every retrain put 76-89 % of buildings after their first confident detection, while this rule matched its labels with MAE 0.15. The label is itself the first year a building appears in the orthophoto record, so the first detection is its direct estimate. The model and its tooling stay in the repository for a feature redesign that has to beat this rule on a held-out county first.</para>
+        /// <para>The run reports how many buildings were dated from a confident detection, from a weaker one only, and how many were left out. It keeps the guard of ZiolkowskiJakub/DiGi.GIS.ML#14: the share of predictions later than their first confident detection year is 0 by construction here, and the table is refused if a future change lets it exceed <see cref="Constants.Plausibility.MaximumImplausibleShare"/>.</para>
         /// </summary>
-        /// <param name="table">The table containing building features, including a reference column.</param>
-        /// <returns>A new table carrying the reference and predicted year built columns, or null if the input table is null, lacks a reference column, or fails the plausibility guard.</returns>
+        /// <param name="table">The table containing building features, including a reference column and the per-year <c>Prediction Confidence</c> columns.</param>
+        /// <returns>A new table carrying the reference and predicted year built columns, one row per detected building, or null if the input table is null, lacks a reference column, or fails the plausibility guard.</returns>
         public static Table? PredictedYearBuilts(this Table? table)
         {
-            if (table is null || table.Columns is null || table.ColumnCount == 0)
+            if (table is null || table.ColumnCount == 0)
             {
                 return null;
             }
 
-            // Resolved once. Two lookups per column across a county of rows was measurable, and the
-            // mapping cannot change while the table is being read.
-            Dictionary<string, int> indexes_BySlug = [];
-            Dictionary<string, int> indexes_ByName = [];
-
-            List<Column> columns = [.. table.Columns];
-            for (int i = 0; i < columns.Count; i++)
-            {
-                Column? column = columns[i];
-                if (column is null)
-                {
-                    continue;
-                }
-
-                if (Core.IO.Query.UniqueId(column) is string slug && !string.IsNullOrWhiteSpace(slug))
-                {
-                    indexes_BySlug.TryAdd(slug, i);
-                }
-
-                if (column.Name is string name && !string.IsNullOrWhiteSpace(name))
-                {
-                    indexes_ByName.TryAdd(name, i);
-                }
-            }
-
-            int Index(string name)
-            {
-                if (indexes_BySlug.TryGetValue(Core.IO.Query.UniqueId(new Column(name, typeof(string))) ?? name, out int index_Slug))
-                {
-                    return index_Slug;
-                }
-
-                return indexes_ByName.TryGetValue(name, out int index_Name) ? index_Name : -1;
-            }
-
-            int index_Reference = Index(GIS.IO.Constants.Column.Reference.Name ?? "Reference");
+            int index_Reference = table.ColumnIndex(GIS.IO.Constants.Column.Reference);
             if (index_Reference < 0)
             {
                 return null;
             }
-
-            // Every feature resolved once for the whole table. Resolving inside the row loop meant a Column
-            // allocation and a slug computation per feature per row - 172 of them against 20 241 rows is
-            // three and a half million of each, for a mapping that cannot change while the table is read.
-            int index_Floor_area = Index(GIS.IO.Constants.Column.FloorArea.Name!);
-            int index_Total_area = Index(GIS.IO.Constants.Column.TotalArea.Name!);
-            int index_Storeys = Index(GIS.IO.Constants.Column.Storeys.Name!);
-            int index_Azimuth = Index(GIS.IO.Constants.Column.Azimuth.Name!);
-            int index_Cardinal_direction = Index(GIS.IO.Constants.Column.CardinalDirection.Name!);
-            int index_Internal_Point_X = Index(GIS.IO.Constants.Column.InternalPointX.Name!);
-            int index_Internal_Point_Y = Index(GIS.IO.Constants.Column.InternalPointY.Name!);
-            int index_BoundingBox_X = Index(GIS.IO.Constants.Column.BoundingBoxX.Name!);
-            int index_BoundingBox_Y = Index(GIS.IO.Constants.Column.BoundingBoxY.Name!);
-            int index_BoundingBox_width = Index(GIS.IO.Constants.Column.BoundingBoxWidth.Name!);
-            int index_BoundingBox_height = Index(GIS.IO.Constants.Column.BoundingBoxHeight.Name!);
-            int index_Isoperimetric_ratio = Index(GIS.IO.Constants.Column.IsoperimetricRatio.Name!);
-            int index_Rectangular_thinnes_ratio = Index(GIS.IO.Constants.Column.RectangularThinnessRatio.Name!);
-            int index_Square_thinness_ratio = Index(GIS.IO.Constants.Column.SquareThinnessRatio.Name!);
-            int index_Thinness_ratio = Index(GIS.IO.Constants.Column.ThinnessRatio.Name!);
-            int index_Convex_hull_thinness_ratio = Index(GIS.IO.Constants.Column.ConvexHullThinnessRatio.Name!);
-            int index_Calculated_Building_Shape = Index(GIS.IO.Constants.Column.CalculatedBuildingShape.Name!);
-            int index_Building_general_function = Index(GIS.IO.Constants.Column.BuildingGeneralFunction.Name!);
-            int index_Building_specific_functions = Index(GIS.IO.Constants.Column.BuildingSpecificFunctions.Name!);
-            int index_Building_Phase = Index(GIS.IO.Constants.Column.BuildingPhase.Name!);
-            int index_Is_residential = Index(GIS.IO.Constants.Column.IsResidential.Name!);
-            int index_Is_occupied = Index(GIS.IO.Constants.Column.IsOccupied.Name!);
-            int index_Voivodeship_name = Index(GIS.IO.Constants.Column.VoivodeshipName.Name!);
-            int index_County_name = Index(GIS.IO.Constants.Column.CountyName.Name!);
-            int index_County_Id = Index(GIS.IO.Constants.Column.CountyId.Name!);
-            int index_Municipality_name = Index(GIS.IO.Constants.Column.MunicipalityName.Name!);
-            int index_Subdivision_name = Index(GIS.IO.Constants.Column.SubdivisionName.Name!);
-            int index_Subdivision_Id = Index(GIS.IO.Constants.Column.SubdivisionId.Name!);
-            int index_Settlement_type = Index(GIS.IO.Constants.Column.SettlementType.Name!);
-            int index_Subdivision_occupancy = Index(GIS.IO.Constants.Column.SubdivisionOccupancy.Name!);
-            int index_Calculated_occupancy = Index(GIS.IO.Constants.Column.CalculatedOccupancy.Name!);
-            int index_Grid_cell_coverage__0_0_ = Index(GIS.IO.Create.Column_GridCellCoverage(0, 0).Name!);
-            int index_Grid_cell_coverage__0_1_ = Index(GIS.IO.Create.Column_GridCellCoverage(0, 1).Name!);
-            int index_Grid_cell_coverage__0_2_ = Index(GIS.IO.Create.Column_GridCellCoverage(0, 2).Name!);
-            int index_Grid_cell_coverage__0_3_ = Index(GIS.IO.Create.Column_GridCellCoverage(0, 3).Name!);
-            int index_Grid_cell_coverage__0_4_ = Index(GIS.IO.Create.Column_GridCellCoverage(0, 4).Name!);
-            int index_Grid_cell_coverage__1_0_ = Index(GIS.IO.Create.Column_GridCellCoverage(1, 0).Name!);
-            int index_Grid_cell_coverage__1_1_ = Index(GIS.IO.Create.Column_GridCellCoverage(1, 1).Name!);
-            int index_Grid_cell_coverage__1_2_ = Index(GIS.IO.Create.Column_GridCellCoverage(1, 2).Name!);
-            int index_Grid_cell_coverage__1_3_ = Index(GIS.IO.Create.Column_GridCellCoverage(1, 3).Name!);
-            int index_Grid_cell_coverage__1_4_ = Index(GIS.IO.Create.Column_GridCellCoverage(1, 4).Name!);
-            int index_Grid_cell_coverage__2_0_ = Index(GIS.IO.Create.Column_GridCellCoverage(2, 0).Name!);
-            int index_Grid_cell_coverage__2_1_ = Index(GIS.IO.Create.Column_GridCellCoverage(2, 1).Name!);
-            int index_Grid_cell_coverage__2_2_ = Index(GIS.IO.Create.Column_GridCellCoverage(2, 2).Name!);
-            int index_Grid_cell_coverage__2_3_ = Index(GIS.IO.Create.Column_GridCellCoverage(2, 3).Name!);
-            int index_Grid_cell_coverage__2_4_ = Index(GIS.IO.Create.Column_GridCellCoverage(2, 4).Name!);
-            int index_Grid_cell_coverage__3_0_ = Index(GIS.IO.Create.Column_GridCellCoverage(3, 0).Name!);
-            int index_Grid_cell_coverage__3_1_ = Index(GIS.IO.Create.Column_GridCellCoverage(3, 1).Name!);
-            int index_Grid_cell_coverage__3_2_ = Index(GIS.IO.Create.Column_GridCellCoverage(3, 2).Name!);
-            int index_Grid_cell_coverage__3_3_ = Index(GIS.IO.Create.Column_GridCellCoverage(3, 3).Name!);
-            int index_Grid_cell_coverage__3_4_ = Index(GIS.IO.Create.Column_GridCellCoverage(3, 4).Name!);
-            int index_Grid_cell_coverage__4_0_ = Index(GIS.IO.Create.Column_GridCellCoverage(4, 0).Name!);
-            int index_Grid_cell_coverage__4_1_ = Index(GIS.IO.Create.Column_GridCellCoverage(4, 1).Name!);
-            int index_Grid_cell_coverage__4_2_ = Index(GIS.IO.Create.Column_GridCellCoverage(4, 2).Name!);
-            int index_Grid_cell_coverage__4_3_ = Index(GIS.IO.Create.Column_GridCellCoverage(4, 3).Name!);
-            int index_Grid_cell_coverage__4_4_ = Index(GIS.IO.Create.Column_GridCellCoverage(4, 4).Name!);
-            int index_Prediction_Confidence_2008 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2008).Name!);
-            int index_Prediction_BoundingBox_X_2008 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2008).Name!);
-            int index_Prediction_BoundingBox_Y_2008 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2008).Name!);
-            int index_Prediction_BoundingBox_Width_2008 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2008).Name!);
-            int index_Prediction_BoundingBox_Height_2008 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2008).Name!);
-            int index_Prediction_Confidence_2009 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2009).Name!);
-            int index_Prediction_BoundingBox_X_2009 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2009).Name!);
-            int index_Prediction_BoundingBox_Y_2009 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2009).Name!);
-            int index_Prediction_BoundingBox_Width_2009 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2009).Name!);
-            int index_Prediction_BoundingBox_Height_2009 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2009).Name!);
-            int index_Prediction_Confidence_2010 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2010).Name!);
-            int index_Prediction_BoundingBox_X_2010 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2010).Name!);
-            int index_Prediction_BoundingBox_Y_2010 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2010).Name!);
-            int index_Prediction_BoundingBox_Width_2010 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2010).Name!);
-            int index_Prediction_BoundingBox_Height_2010 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2010).Name!);
-            int index_Prediction_Confidence_2011 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2011).Name!);
-            int index_Prediction_BoundingBox_X_2011 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2011).Name!);
-            int index_Prediction_BoundingBox_Y_2011 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2011).Name!);
-            int index_Prediction_BoundingBox_Width_2011 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2011).Name!);
-            int index_Prediction_BoundingBox_Height_2011 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2011).Name!);
-            int index_Prediction_Confidence_2012 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2012).Name!);
-            int index_Prediction_BoundingBox_X_2012 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2012).Name!);
-            int index_Prediction_BoundingBox_Y_2012 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2012).Name!);
-            int index_Prediction_BoundingBox_Width_2012 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2012).Name!);
-            int index_Prediction_BoundingBox_Height_2012 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2012).Name!);
-            int index_Prediction_Confidence_2013 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2013).Name!);
-            int index_Prediction_BoundingBox_X_2013 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2013).Name!);
-            int index_Prediction_BoundingBox_Y_2013 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2013).Name!);
-            int index_Prediction_BoundingBox_Width_2013 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2013).Name!);
-            int index_Prediction_BoundingBox_Height_2013 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2013).Name!);
-            int index_Prediction_Confidence_2014 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2014).Name!);
-            int index_Prediction_BoundingBox_X_2014 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2014).Name!);
-            int index_Prediction_BoundingBox_Y_2014 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2014).Name!);
-            int index_Prediction_BoundingBox_Width_2014 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2014).Name!);
-            int index_Prediction_BoundingBox_Height_2014 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2014).Name!);
-            int index_Prediction_Confidence_2015 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2015).Name!);
-            int index_Prediction_BoundingBox_X_2015 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2015).Name!);
-            int index_Prediction_BoundingBox_Y_2015 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2015).Name!);
-            int index_Prediction_BoundingBox_Width_2015 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2015).Name!);
-            int index_Prediction_BoundingBox_Height_2015 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2015).Name!);
-            int index_Prediction_Confidence_2016 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2016).Name!);
-            int index_Prediction_BoundingBox_X_2016 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2016).Name!);
-            int index_Prediction_BoundingBox_Y_2016 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2016).Name!);
-            int index_Prediction_BoundingBox_Width_2016 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2016).Name!);
-            int index_Prediction_BoundingBox_Height_2016 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2016).Name!);
-            int index_Prediction_Confidence_2017 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2017).Name!);
-            int index_Prediction_BoundingBox_X_2017 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2017).Name!);
-            int index_Prediction_BoundingBox_Y_2017 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2017).Name!);
-            int index_Prediction_BoundingBox_Width_2017 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2017).Name!);
-            int index_Prediction_BoundingBox_Height_2017 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2017).Name!);
-            int index_Prediction_Confidence_2018 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2018).Name!);
-            int index_Prediction_BoundingBox_X_2018 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2018).Name!);
-            int index_Prediction_BoundingBox_Y_2018 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2018).Name!);
-            int index_Prediction_BoundingBox_Width_2018 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2018).Name!);
-            int index_Prediction_BoundingBox_Height_2018 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2018).Name!);
-            int index_Prediction_Confidence_2019 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2019).Name!);
-            int index_Prediction_BoundingBox_X_2019 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2019).Name!);
-            int index_Prediction_BoundingBox_Y_2019 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2019).Name!);
-            int index_Prediction_BoundingBox_Width_2019 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2019).Name!);
-            int index_Prediction_BoundingBox_Height_2019 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2019).Name!);
-            int index_Prediction_Confidence_2020 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2020).Name!);
-            int index_Prediction_BoundingBox_X_2020 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2020).Name!);
-            int index_Prediction_BoundingBox_Y_2020 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2020).Name!);
-            int index_Prediction_BoundingBox_Width_2020 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2020).Name!);
-            int index_Prediction_BoundingBox_Height_2020 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2020).Name!);
-            int index_Prediction_Confidence_2021 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2021).Name!);
-            int index_Prediction_BoundingBox_X_2021 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2021).Name!);
-            int index_Prediction_BoundingBox_Y_2021 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2021).Name!);
-            int index_Prediction_BoundingBox_Width_2021 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2021).Name!);
-            int index_Prediction_BoundingBox_Height_2021 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2021).Name!);
-            int index_Prediction_Confidence_2022 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2022).Name!);
-            int index_Prediction_BoundingBox_X_2022 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2022).Name!);
-            int index_Prediction_BoundingBox_Y_2022 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2022).Name!);
-            int index_Prediction_BoundingBox_Width_2022 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2022).Name!);
-            int index_Prediction_BoundingBox_Height_2022 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2022).Name!);
-            int index_Prediction_Confidence_2023 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2023).Name!);
-            int index_Prediction_BoundingBox_X_2023 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2023).Name!);
-            int index_Prediction_BoundingBox_Y_2023 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2023).Name!);
-            int index_Prediction_BoundingBox_Width_2023 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2023).Name!);
-            int index_Prediction_BoundingBox_Height_2023 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2023).Name!);
-            int index_Prediction_Confidence_2024 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2024).Name!);
-            int index_Prediction_BoundingBox_X_2024 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2024).Name!);
-            int index_Prediction_BoundingBox_Y_2024 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2024).Name!);
-            int index_Prediction_BoundingBox_Width_2024 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2024).Name!);
-            int index_Prediction_BoundingBox_Height_2024 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2024).Name!);
-            int index_Prediction_Confidence_2025 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionConfidence, 2025).Name!);
-            int index_Prediction_BoundingBox_X_2025 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxX, 2025).Name!);
-            int index_Prediction_BoundingBox_Y_2025 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxY, 2025).Name!);
-            int index_Prediction_BoundingBox_Width_2025 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxWidth, 2025).Name!);
-            int index_Prediction_BoundingBox_Height_2025 = Index(GIS.IO.Create.Column_PredictionYearBuit(GIS.IO.Constants.ColumnNamePrefix.PredictionBoundingBoxHeight, 2025).Name!);
-            int index_Municipality_population_2008 = Index(GIS.IO.Create.Column_Population(2008).Name!);
-            int index_Municipality_population_2009 = Index(GIS.IO.Create.Column_Population(2009).Name!);
-            int index_Municipality_population_2010 = Index(GIS.IO.Create.Column_Population(2010).Name!);
-            int index_Municipality_population_2011 = Index(GIS.IO.Create.Column_Population(2011).Name!);
-            int index_Municipality_population_2012 = Index(GIS.IO.Create.Column_Population(2012).Name!);
-            int index_Municipality_population_2013 = Index(GIS.IO.Create.Column_Population(2013).Name!);
-            int index_Municipality_population_2014 = Index(GIS.IO.Create.Column_Population(2014).Name!);
-            int index_Municipality_population_2015 = Index(GIS.IO.Create.Column_Population(2015).Name!);
-            int index_Municipality_population_2016 = Index(GIS.IO.Create.Column_Population(2016).Name!);
-            int index_Municipality_population_2017 = Index(GIS.IO.Create.Column_Population(2017).Name!);
-            int index_Municipality_population_2018 = Index(GIS.IO.Create.Column_Population(2018).Name!);
-            int index_Municipality_population_2019 = Index(GIS.IO.Create.Column_Population(2019).Name!);
-            int index_Municipality_population_2020 = Index(GIS.IO.Create.Column_Population(2020).Name!);
-            int index_Municipality_population_2021 = Index(GIS.IO.Create.Column_Population(2021).Name!);
-            int index_Municipality_population_2022 = Index(GIS.IO.Create.Column_Population(2022).Name!);
-            int index_Municipality_population_2023 = Index(GIS.IO.Create.Column_Population(2023).Name!);
-            int index_Municipality_population_2024 = Index(GIS.IO.Create.Column_Population(2024).Name!);
-            int index_Municipality_population_2025 = Index(GIS.IO.Create.Column_Population(2025).Name!);
-            int index_Radial_Building_Coverage_Ratio_200m = Index(GIS.IO.Create.Column_RadialBuildingCoverageRatio(200).Name!);
-            int index_Radial_Floor_Area_Ratio_200m = Index(GIS.IO.Create.Column_RadialFloorAreaRatio(200).Name!);
-            int index_Radial_Building_Coverage_Ratio_400m = Index(GIS.IO.Create.Column_RadialBuildingCoverageRatio(400).Name!);
-            int index_Radial_Floor_Area_Ratio_400m = Index(GIS.IO.Create.Column_RadialFloorAreaRatio(400).Name!);
-            int index_Radial_Building_Coverage_Ratio_600m = Index(GIS.IO.Create.Column_RadialBuildingCoverageRatio(600).Name!);
-            int index_Radial_Floor_Area_Ratio_600m = Index(GIS.IO.Create.Column_RadialFloorAreaRatio(600).Name!);
-            int index_Radial_Building_Coverage_Ratio_1000m = Index(GIS.IO.Create.Column_RadialBuildingCoverageRatio(1000).Name!);
-            int index_Radial_Floor_Area_Ratio_1000m = Index(GIS.IO.Create.Column_RadialFloorAreaRatio(1000).Name!);
 
             Table result = new();
             result.AddColumn(GIS.IO.Constants.Column.Reference);
@@ -253,298 +37,58 @@ namespace DiGi.GIS.ML
                 return result;
             }
 
-            // Confidence columns in year order, for the plausibility cap: the first column reporting the
-            // building is the first year the imagery saw it.
-            int[] indexes_Prediction_Confidence = [index_Prediction_Confidence_2008, index_Prediction_Confidence_2009, index_Prediction_Confidence_2010, index_Prediction_Confidence_2011, index_Prediction_Confidence_2012, index_Prediction_Confidence_2013, index_Prediction_Confidence_2014, index_Prediction_Confidence_2015, index_Prediction_Confidence_2016, index_Prediction_Confidence_2017, index_Prediction_Confidence_2018, index_Prediction_Confidence_2019, index_Prediction_Confidence_2020, index_Prediction_Confidence_2021, index_Prediction_Confidence_2022, index_Prediction_Confidence_2023, index_Prediction_Confidence_2024, index_Prediction_Confidence_2025];
+            List<int?> years_Confident = table.FirstConfidentDetectionYears();
+            List<int?> years_Detected = table.FirstConfidentDetectionYears(0F);
 
-            int rows_WithConfidentDetection = 0;
-            int predictions_AboveConfidentDetection_Raw = 0;
-            int predictions_AboveConfidentDetection_Final = 0;
-            int predictions_Capped = 0;
+            int rows_Confident = 0;
+            int rows_DetectedOnly = 0;
+            int rows_Undetected = 0;
+            int predictions_AboveConfidentDetection = 0;
 
             for (int i = 0; i < table.RowCount; i++)
             {
-                Row? row = table.GetRow(i);
-                if (row is null)
-                {
-                    continue;
-                }
-
-                string? reference = row.GetValue(index_Reference, string.Empty);
+                string? reference = table.GetValue<string>(i, index_Reference);
                 if (string.IsNullOrWhiteSpace(reference))
                 {
                     continue;
                 }
 
-                float Single(int index)
+                int? year_Confident = years_Confident[i];
+                if ((year_Confident ?? years_Detected[i]) is not int year)
                 {
-                    return index < 0 ? 0F : row.GetValue(index, 0F);
-                }
-
-                string Text(int index)
-                {
-                    return index < 0 ? string.Empty : row.GetValue(index, string.Empty) ?? string.Empty;
-                }
-
-                bool Boolean(int index)
-                {
-                    return index >= 0 && row.GetValue(index, false);
-                }
-
-                OrtoBuildingDetectionModel.ModelInput modelInput = new()
-                {
-                    Floor_area = Single(index_Floor_area),
-                    Total_area = Single(index_Total_area),
-                    Storeys = Single(index_Storeys),
-                    Azimuth = Single(index_Azimuth),
-                    Cardinal_direction = Text(index_Cardinal_direction),
-                    Internal_Point_X = Single(index_Internal_Point_X),
-                    Internal_Point_Y = Single(index_Internal_Point_Y),
-                    BoundingBox_X = Single(index_BoundingBox_X),
-                    BoundingBox_Y = Single(index_BoundingBox_Y),
-                    BoundingBox_width = Single(index_BoundingBox_width),
-                    BoundingBox_height = Single(index_BoundingBox_height),
-                    Isoperimetric_ratio = Single(index_Isoperimetric_ratio),
-                    Rectangular_thinnes_ratio = Single(index_Rectangular_thinnes_ratio),
-                    Square_thinness_ratio = Single(index_Square_thinness_ratio),
-                    Thinness_ratio = Single(index_Thinness_ratio),
-                    Convex_hull_thinness_ratio = Single(index_Convex_hull_thinness_ratio),
-                    Calculated_Building_Shape = Text(index_Calculated_Building_Shape),
-                    Building_general_function = Text(index_Building_general_function),
-                    Building_specific_functions = Text(index_Building_specific_functions),
-                    Building_Phase = Text(index_Building_Phase),
-                    Is_residential = Boolean(index_Is_residential),
-                    Is_occupied = Boolean(index_Is_occupied),
-                    Voivodeship_name = Text(index_Voivodeship_name),
-                    County_name = Text(index_County_name),
-                    County_Id = Single(index_County_Id),
-                    Municipality_name = Text(index_Municipality_name),
-                    Subdivision_name = Text(index_Subdivision_name),
-                    Subdivision_Id = Single(index_Subdivision_Id),
-                    Settlement_type = Text(index_Settlement_type),
-                    Subdivision_occupancy = Single(index_Subdivision_occupancy),
-                    Calculated_occupancy = Single(index_Calculated_occupancy),
-                    Grid_cell_coverage__0_0_ = Single(index_Grid_cell_coverage__0_0_),
-                    Grid_cell_coverage__0_1_ = Single(index_Grid_cell_coverage__0_1_),
-                    Grid_cell_coverage__0_2_ = Single(index_Grid_cell_coverage__0_2_),
-                    Grid_cell_coverage__0_3_ = Single(index_Grid_cell_coverage__0_3_),
-                    Grid_cell_coverage__0_4_ = Single(index_Grid_cell_coverage__0_4_),
-                    Grid_cell_coverage__1_0_ = Single(index_Grid_cell_coverage__1_0_),
-                    Grid_cell_coverage__1_1_ = Single(index_Grid_cell_coverage__1_1_),
-                    Grid_cell_coverage__1_2_ = Single(index_Grid_cell_coverage__1_2_),
-                    Grid_cell_coverage__1_3_ = Single(index_Grid_cell_coverage__1_3_),
-                    Grid_cell_coverage__1_4_ = Single(index_Grid_cell_coverage__1_4_),
-                    Grid_cell_coverage__2_0_ = Single(index_Grid_cell_coverage__2_0_),
-                    Grid_cell_coverage__2_1_ = Single(index_Grid_cell_coverage__2_1_),
-                    Grid_cell_coverage__2_2_ = Single(index_Grid_cell_coverage__2_2_),
-                    Grid_cell_coverage__2_3_ = Single(index_Grid_cell_coverage__2_3_),
-                    Grid_cell_coverage__2_4_ = Single(index_Grid_cell_coverage__2_4_),
-                    Grid_cell_coverage__3_0_ = Single(index_Grid_cell_coverage__3_0_),
-                    Grid_cell_coverage__3_1_ = Single(index_Grid_cell_coverage__3_1_),
-                    Grid_cell_coverage__3_2_ = Single(index_Grid_cell_coverage__3_2_),
-                    Grid_cell_coverage__3_3_ = Single(index_Grid_cell_coverage__3_3_),
-                    Grid_cell_coverage__3_4_ = Single(index_Grid_cell_coverage__3_4_),
-                    Grid_cell_coverage__4_0_ = Single(index_Grid_cell_coverage__4_0_),
-                    Grid_cell_coverage__4_1_ = Single(index_Grid_cell_coverage__4_1_),
-                    Grid_cell_coverage__4_2_ = Single(index_Grid_cell_coverage__4_2_),
-                    Grid_cell_coverage__4_3_ = Single(index_Grid_cell_coverage__4_3_),
-                    Grid_cell_coverage__4_4_ = Single(index_Grid_cell_coverage__4_4_),
-                    Prediction_Confidence_2008 = Single(index_Prediction_Confidence_2008),
-                    Prediction_BoundingBox_X_2008 = Single(index_Prediction_BoundingBox_X_2008),
-                    Prediction_BoundingBox_Y_2008 = Single(index_Prediction_BoundingBox_Y_2008),
-                    Prediction_BoundingBox_Width_2008 = Single(index_Prediction_BoundingBox_Width_2008),
-                    Prediction_BoundingBox_Height_2008 = Single(index_Prediction_BoundingBox_Height_2008),
-                    Prediction_Confidence_2009 = Single(index_Prediction_Confidence_2009),
-                    Prediction_BoundingBox_X_2009 = Single(index_Prediction_BoundingBox_X_2009),
-                    Prediction_BoundingBox_Y_2009 = Single(index_Prediction_BoundingBox_Y_2009),
-                    Prediction_BoundingBox_Width_2009 = Single(index_Prediction_BoundingBox_Width_2009),
-                    Prediction_BoundingBox_Height_2009 = Single(index_Prediction_BoundingBox_Height_2009),
-                    Prediction_Confidence_2010 = Single(index_Prediction_Confidence_2010),
-                    Prediction_BoundingBox_X_2010 = Single(index_Prediction_BoundingBox_X_2010),
-                    Prediction_BoundingBox_Y_2010 = Single(index_Prediction_BoundingBox_Y_2010),
-                    Prediction_BoundingBox_Width_2010 = Single(index_Prediction_BoundingBox_Width_2010),
-                    Prediction_BoundingBox_Height_2010 = Single(index_Prediction_BoundingBox_Height_2010),
-                    Prediction_Confidence_2011 = Single(index_Prediction_Confidence_2011),
-                    Prediction_BoundingBox_X_2011 = Single(index_Prediction_BoundingBox_X_2011),
-                    Prediction_BoundingBox_Y_2011 = Single(index_Prediction_BoundingBox_Y_2011),
-                    Prediction_BoundingBox_Width_2011 = Single(index_Prediction_BoundingBox_Width_2011),
-                    Prediction_BoundingBox_Height_2011 = Single(index_Prediction_BoundingBox_Height_2011),
-                    Prediction_Confidence_2012 = Single(index_Prediction_Confidence_2012),
-                    Prediction_BoundingBox_X_2012 = Single(index_Prediction_BoundingBox_X_2012),
-                    Prediction_BoundingBox_Y_2012 = Single(index_Prediction_BoundingBox_Y_2012),
-                    Prediction_BoundingBox_Width_2012 = Single(index_Prediction_BoundingBox_Width_2012),
-                    Prediction_BoundingBox_Height_2012 = Single(index_Prediction_BoundingBox_Height_2012),
-                    Prediction_Confidence_2013 = Single(index_Prediction_Confidence_2013),
-                    Prediction_BoundingBox_X_2013 = Single(index_Prediction_BoundingBox_X_2013),
-                    Prediction_BoundingBox_Y_2013 = Single(index_Prediction_BoundingBox_Y_2013),
-                    Prediction_BoundingBox_Width_2013 = Single(index_Prediction_BoundingBox_Width_2013),
-                    Prediction_BoundingBox_Height_2013 = Single(index_Prediction_BoundingBox_Height_2013),
-                    Prediction_Confidence_2014 = Single(index_Prediction_Confidence_2014),
-                    Prediction_BoundingBox_X_2014 = Single(index_Prediction_BoundingBox_X_2014),
-                    Prediction_BoundingBox_Y_2014 = Single(index_Prediction_BoundingBox_Y_2014),
-                    Prediction_BoundingBox_Width_2014 = Single(index_Prediction_BoundingBox_Width_2014),
-                    Prediction_BoundingBox_Height_2014 = Single(index_Prediction_BoundingBox_Height_2014),
-                    Prediction_Confidence_2015 = Single(index_Prediction_Confidence_2015),
-                    Prediction_BoundingBox_X_2015 = Single(index_Prediction_BoundingBox_X_2015),
-                    Prediction_BoundingBox_Y_2015 = Single(index_Prediction_BoundingBox_Y_2015),
-                    Prediction_BoundingBox_Width_2015 = Single(index_Prediction_BoundingBox_Width_2015),
-                    Prediction_BoundingBox_Height_2015 = Single(index_Prediction_BoundingBox_Height_2015),
-                    Prediction_Confidence_2016 = Single(index_Prediction_Confidence_2016),
-                    Prediction_BoundingBox_X_2016 = Single(index_Prediction_BoundingBox_X_2016),
-                    Prediction_BoundingBox_Y_2016 = Single(index_Prediction_BoundingBox_Y_2016),
-                    Prediction_BoundingBox_Width_2016 = Single(index_Prediction_BoundingBox_Width_2016),
-                    Prediction_BoundingBox_Height_2016 = Single(index_Prediction_BoundingBox_Height_2016),
-                    Prediction_Confidence_2017 = Single(index_Prediction_Confidence_2017),
-                    Prediction_BoundingBox_X_2017 = Single(index_Prediction_BoundingBox_X_2017),
-                    Prediction_BoundingBox_Y_2017 = Single(index_Prediction_BoundingBox_Y_2017),
-                    Prediction_BoundingBox_Width_2017 = Single(index_Prediction_BoundingBox_Width_2017),
-                    Prediction_BoundingBox_Height_2017 = Single(index_Prediction_BoundingBox_Height_2017),
-                    Prediction_Confidence_2018 = Single(index_Prediction_Confidence_2018),
-                    Prediction_BoundingBox_X_2018 = Single(index_Prediction_BoundingBox_X_2018),
-                    Prediction_BoundingBox_Y_2018 = Single(index_Prediction_BoundingBox_Y_2018),
-                    Prediction_BoundingBox_Width_2018 = Single(index_Prediction_BoundingBox_Width_2018),
-                    Prediction_BoundingBox_Height_2018 = Single(index_Prediction_BoundingBox_Height_2018),
-                    Prediction_Confidence_2019 = Single(index_Prediction_Confidence_2019),
-                    Prediction_BoundingBox_X_2019 = Single(index_Prediction_BoundingBox_X_2019),
-                    Prediction_BoundingBox_Y_2019 = Single(index_Prediction_BoundingBox_Y_2019),
-                    Prediction_BoundingBox_Width_2019 = Single(index_Prediction_BoundingBox_Width_2019),
-                    Prediction_BoundingBox_Height_2019 = Single(index_Prediction_BoundingBox_Height_2019),
-                    Prediction_Confidence_2020 = Single(index_Prediction_Confidence_2020),
-                    Prediction_BoundingBox_X_2020 = Single(index_Prediction_BoundingBox_X_2020),
-                    Prediction_BoundingBox_Y_2020 = Single(index_Prediction_BoundingBox_Y_2020),
-                    Prediction_BoundingBox_Width_2020 = Single(index_Prediction_BoundingBox_Width_2020),
-                    Prediction_BoundingBox_Height_2020 = Single(index_Prediction_BoundingBox_Height_2020),
-                    Prediction_Confidence_2021 = Single(index_Prediction_Confidence_2021),
-                    Prediction_BoundingBox_X_2021 = Single(index_Prediction_BoundingBox_X_2021),
-                    Prediction_BoundingBox_Y_2021 = Single(index_Prediction_BoundingBox_Y_2021),
-                    Prediction_BoundingBox_Width_2021 = Single(index_Prediction_BoundingBox_Width_2021),
-                    Prediction_BoundingBox_Height_2021 = Single(index_Prediction_BoundingBox_Height_2021),
-                    Prediction_Confidence_2022 = Single(index_Prediction_Confidence_2022),
-                    Prediction_BoundingBox_X_2022 = Single(index_Prediction_BoundingBox_X_2022),
-                    Prediction_BoundingBox_Y_2022 = Single(index_Prediction_BoundingBox_Y_2022),
-                    Prediction_BoundingBox_Width_2022 = Single(index_Prediction_BoundingBox_Width_2022),
-                    Prediction_BoundingBox_Height_2022 = Single(index_Prediction_BoundingBox_Height_2022),
-                    Prediction_Confidence_2023 = Single(index_Prediction_Confidence_2023),
-                    Prediction_BoundingBox_X_2023 = Single(index_Prediction_BoundingBox_X_2023),
-                    Prediction_BoundingBox_Y_2023 = Single(index_Prediction_BoundingBox_Y_2023),
-                    Prediction_BoundingBox_Width_2023 = Single(index_Prediction_BoundingBox_Width_2023),
-                    Prediction_BoundingBox_Height_2023 = Single(index_Prediction_BoundingBox_Height_2023),
-                    Prediction_Confidence_2024 = Single(index_Prediction_Confidence_2024),
-                    Prediction_BoundingBox_X_2024 = Single(index_Prediction_BoundingBox_X_2024),
-                    Prediction_BoundingBox_Y_2024 = Single(index_Prediction_BoundingBox_Y_2024),
-                    Prediction_BoundingBox_Width_2024 = Single(index_Prediction_BoundingBox_Width_2024),
-                    Prediction_BoundingBox_Height_2024 = Single(index_Prediction_BoundingBox_Height_2024),
-                    Prediction_Confidence_2025 = Single(index_Prediction_Confidence_2025),
-                    Prediction_BoundingBox_X_2025 = Single(index_Prediction_BoundingBox_X_2025),
-                    Prediction_BoundingBox_Y_2025 = Single(index_Prediction_BoundingBox_Y_2025),
-                    Prediction_BoundingBox_Width_2025 = Single(index_Prediction_BoundingBox_Width_2025),
-                    Prediction_BoundingBox_Height_2025 = Single(index_Prediction_BoundingBox_Height_2025),
-                    Municipality_population_2008 = Single(index_Municipality_population_2008),
-                    Municipality_population_2009 = Single(index_Municipality_population_2009),
-                    Municipality_population_2010 = Single(index_Municipality_population_2010),
-                    Municipality_population_2011 = Single(index_Municipality_population_2011),
-                    Municipality_population_2012 = Single(index_Municipality_population_2012),
-                    Municipality_population_2013 = Single(index_Municipality_population_2013),
-                    Municipality_population_2014 = Single(index_Municipality_population_2014),
-                    Municipality_population_2015 = Single(index_Municipality_population_2015),
-                    Municipality_population_2016 = Single(index_Municipality_population_2016),
-                    Municipality_population_2017 = Single(index_Municipality_population_2017),
-                    Municipality_population_2018 = Single(index_Municipality_population_2018),
-                    Municipality_population_2019 = Single(index_Municipality_population_2019),
-                    Municipality_population_2020 = Single(index_Municipality_population_2020),
-                    Municipality_population_2021 = Single(index_Municipality_population_2021),
-                    Municipality_population_2022 = Single(index_Municipality_population_2022),
-                    Municipality_population_2023 = Single(index_Municipality_population_2023),
-                    Municipality_population_2024 = Single(index_Municipality_population_2024),
-                    Municipality_population_2025 = Single(index_Municipality_population_2025),
-                    Radial_Building_Coverage_Ratio_200m = Single(index_Radial_Building_Coverage_Ratio_200m),
-                    Radial_Floor_Area_Ratio_200m = Single(index_Radial_Floor_Area_Ratio_200m),
-                    Radial_Building_Coverage_Ratio_400m = Single(index_Radial_Building_Coverage_Ratio_400m),
-                    Radial_Floor_Area_Ratio_400m = Single(index_Radial_Floor_Area_Ratio_400m),
-                    Radial_Building_Coverage_Ratio_600m = Single(index_Radial_Building_Coverage_Ratio_600m),
-                    Radial_Floor_Area_Ratio_600m = Single(index_Radial_Floor_Area_Ratio_600m),
-                    Radial_Building_Coverage_Ratio_1000m = Single(index_Radial_Building_Coverage_Ratio_1000m),
-                    Radial_Floor_Area_Ratio_1000m = Single(index_Radial_Floor_Area_Ratio_1000m),
-                };
-
-                OrtoBuildingDetectionModel.ModelOutput modelOutput = OrtoBuildingDetectionModel.Predict(modelInput);
-
-                double score = modelOutput.Score;
-                int floor = (int)Math.Floor(score);
-                int year = score - floor > 0.5 ? floor + 1 : floor;
-                if (year < 0)
-                {
-                    year = 0;
-                }
-                else if (year > ushort.MaxValue)
-                {
-                    year = ushort.MaxValue;
-                }
-
-                // Plausibility cap (ZiolkowskiJakub/DiGi.GIS.ML#14): a building cannot have been built
-                // after the imagery first saw it. Bound by the first confident detection year, falling
-                // back to the first year any confidence was reported; a row the detector never saw keeps
-                // its raw score, because there is nothing to bound it by.
-                int? year_Detected = null;
-                int? year_Confident = null;
-                for (int j = 0; j < indexes_Prediction_Confidence.Length; j++)
-                {
-                    float confidence = Single(indexes_Prediction_Confidence[j]);
-                    if (year_Detected is null && confidence > 0)
-                    {
-                        year_Detected = Constants.Plausibility.FirstPredictionYear + j;
-                    }
-
-                    if (year_Confident is null && confidence >= Constants.Plausibility.ConfidentDetectionThreshold)
-                    {
-                        year_Confident = Constants.Plausibility.FirstPredictionYear + j;
-                    }
-
-                    if (year_Detected is not null && year_Confident is not null)
-                    {
-                        break;
-                    }
+                    rows_Undetected++;
+                    continue;
                 }
 
                 if (year_Confident is int confident)
                 {
-                    rows_WithConfidentDetection++;
+                    rows_Confident++;
+
+                    // Zero by construction. Counted so the guard below still trips if a change ever dates a building
+                    // later than the imagery that confidently saw it - the defect of ZiolkowskiJakub/DiGi.GIS.ML#14.
                     if (year > confident)
                     {
-                        predictions_AboveConfidentDetection_Raw++;
+                        predictions_AboveConfidentDetection++;
                     }
                 }
-
-                if ((year_Confident ?? year_Detected) is int cap && year > cap)
+                else
                 {
-                    year = cap;
-                    predictions_Capped++;
-                }
-
-                if (year_Confident is int confident_Final && year > confident_Final)
-                {
-                    predictions_AboveConfidentDetection_Final++;
+                    rows_DetectedOnly++;
                 }
 
                 result.AddRow([reference, (ushort)year]);
             }
 
-            if (rows_WithConfidentDetection > 0)
+            Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[INFO] year built: {rows_Confident} buildings dated by their first confident detection (confidence >= {Constants.Plausibility.ConfidentDetectionThreshold}), {rows_DetectedOnly} by a weaker detection only, {rows_Undetected} never detected and left out."));
+
+            if (rows_Confident > 0)
             {
-                double share_Raw = (double)predictions_AboveConfidentDetection_Raw / rows_WithConfidentDetection;
-                double share_Final = (double)predictions_AboveConfidentDetection_Final / rows_WithConfidentDetection;
-
-                Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[WARN] year built plausibility: {share_Raw * 100:F1}% of predictions ({predictions_AboveConfidentDetection_Raw} of {rows_WithConfidentDetection} rows with a confident detection) are later than the first confident detection year before the plausibility cap; {share_Final * 100:F1}% ({predictions_AboveConfidentDetection_Final}) after it; {predictions_Capped} rows capped."));
-
-                if (!share_Final.IsPlausibleShare())
+                double share = (double)predictions_AboveConfidentDetection / rows_Confident;
+                if (!share.IsPlausibleShare())
                 {
-                    Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[ERROR] year built plausibility guard: {share_Final * 100:F1}% of predictions are later than the first confident detection year, over the {Constants.Plausibility.MaximumImplausibleShare * 100:F1}% maximum - refusing to return predicted year built values."));
+                    Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[ERROR] year built plausibility guard: {share * 100:F1}% of predictions are later than the first confident detection year, over the {Constants.Plausibility.MaximumImplausibleShare * 100:F1}% maximum - refusing to return predicted year built values."));
                     return null;
                 }
-            }
-            else
-            {
-                Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[WARN] year built plausibility: no scored row carries a confident detection ({result.RowCount} rows scored) - the share later than the first confident detection year is not evaluable, so it is reported but not guarded."));
             }
 
             return result;

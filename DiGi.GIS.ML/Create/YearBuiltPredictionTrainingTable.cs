@@ -1,7 +1,5 @@
-using DiGi.Core;
 using DiGi.Core.Classes;
 using DiGi.Core.IO.Table.Classes;
-using System;
 using System.Collections.Generic;
 
 namespace DiGi.GIS.ML
@@ -11,7 +9,7 @@ namespace DiGi.GIS.ML
         /// <summary>
         /// Builds the Year Built prediction training table from stored building feature tables and the labels of those buildings.
         /// <para>The result is the projection the regressor is trained on: the reference, then every column of <c>DiGi.GIS.IO.Query.YearBuiltPredictionInputColumns</c> in its own order, then the label. The reference is an identifier rather than a feature and the incumbent model ignores it; it is carried so a row can be traced back to its building.</para>
-        /// <para><b>The schema is fixed, and that is the point of this method.</b> <c>Modify.Update_Building2D_YearBuiltPredictions</c> creates the five detection columns only for years it actually saw, so a county whose orthophoto series skips a year has no columns for it and the read comes back narrower. Concatenating those tables as they arrive would line different features up under the same position. Every allow-list column is therefore materialised for every row, and a column the source did not carry is filled with the same default the inference path would have used.</para>
+        /// <para>It is <see cref="YearBuiltPredictionInputTable(IEnumerable{Table?}?, Range{int}?, IEnumerable{double}?)"/> filtered to the labelled buildings with the label appended. <b>The schema is fixed, and that is the point of both methods.</b> <c>Modify.Update_Building2D_YearBuiltPredictions</c> creates the five detection columns only for years it actually saw, so a county whose orthophoto series skips a year has no columns for it and the read comes back narrower. Concatenating those tables as they arrive would line different features up under the same position. Every allow-list column is therefore materialised for every row, and a column the source did not carry is filled with the same default the inference path would have used.</para>
         /// <para>That default matters more than it looks. <c>Query.PredictedYearBuilts</c> reads an absent feature as <c>0F</c>, so training on an absent feature written as anything else would show the model one distribution and the deployed pipeline another.</para>
         /// <para>Only a labelled building becomes a row. A building with no label is skipped rather than defaulted, because a building whose year nobody knows is not a building built in year zero.</para>
         /// </summary>
@@ -27,131 +25,40 @@ namespace DiGi.GIS.ML
                 return null;
             }
 
-            List<Column> columns_Input = GIS.IO.Query.YearBuiltPredictionInputColumns(years, radiuses);
-            if (columns_Input is null || columns_Input.Count == 0)
+            // The training row is the input row with its label appended, so the trainer and an unlabelled scoring
+            // run cannot disagree about what a feature is or what an absent one defaults to.
+            Table? table_Input = tables.YearBuiltPredictionInputTable(years, radiuses);
+            if (table_Input is null)
             {
                 return null;
             }
 
             Table result = new();
-            result.AddColumn(GIS.IO.Constants.Column.Reference);
-            foreach (Column column in columns_Input)
+            foreach (Column column in table_Input.Columns)
             {
                 result.AddColumn(column);
             }
             result.AddColumn(Constants.Column.YearBuilt);
 
-            // A value the source did not carry has to look to the trainer exactly as it will look to the scorer.
-            object? DefaultValue(Type? type)
+            int index_Reference = table_Input.GetColumnIndex(GIS.IO.Constants.Column.Reference.Name);
+            int columnCount = table_Input.ColumnCount;
+
+            for (int i = 0; i < table_Input.RowCount; i++)
             {
-                if (type is null || type == typeof(string))
-                {
-                    return string.Empty;
-                }
-
-                if (type == typeof(bool))
-                {
-                    return false;
-                }
-
-                // Fully qualified: DiGi.Core also declares a Convert, and both namespaces are imported here.
-                return System.Convert.ChangeType(0, Nullable.GetUnderlyingType(type) ?? type);
-            }
-
-            List<object?> values_Default = [];
-            foreach (Column column in columns_Input)
-            {
-                values_Default.Add(DefaultValue(column?.Type));
-            }
-
-            HashSet<string> references_Added = [];
-
-            foreach (Table? table in tables)
-            {
-                if (table is null || table.ColumnCount == 0 || table.RowCount == 0)
+                string? reference = table_Input.GetValue<string>(i, index_Reference);
+                if (string.IsNullOrWhiteSpace(reference) || !years_ByReference.TryGetValue(reference!, out short year))
                 {
                     continue;
                 }
 
-                List<Column> columns_Source = [.. table.Columns];
-
-                int IndexOf(Column? column)
+                List<object?> values = [];
+                for (int j = 0; j < columnCount; j++)
                 {
-                    if (column is null)
-                    {
-                        return -1;
-                    }
-
-                    string? uniqueId = column.UniqueId();
-                    if (!string.IsNullOrWhiteSpace(uniqueId))
-                    {
-                        for (int i = 0; i < columns_Source.Count; i++)
-                        {
-                            if (columns_Source[i] is Column column_Source && string.Equals(column_Source.UniqueId(), uniqueId, StringComparison.Ordinal))
-                            {
-                                return i;
-                            }
-                        }
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(column.Name))
-                    {
-                        for (int i = 0; i < columns_Source.Count; i++)
-                        {
-                            if (columns_Source[i] is Column column_Source && string.Equals(column_Source.Name, column.Name, StringComparison.OrdinalIgnoreCase))
-                            {
-                                return i;
-                            }
-                        }
-                    }
-
-                    return -1;
+                    values.Add(table_Input.GetValue(i, j));
                 }
+                values.Add(year);
 
-                int index_Reference = IndexOf(GIS.IO.Constants.Column.Reference);
-                if (index_Reference < 0)
-                {
-                    continue;
-                }
-
-                List<int> indexes_Input = [];
-                foreach (Column column in columns_Input)
-                {
-                    indexes_Input.Add(IndexOf(column));
-                }
-
-                for (int i = 0; i < table.RowCount; i++)
-                {
-                    Row? row = table.GetRow(i);
-                    if (row is null)
-                    {
-                        continue;
-                    }
-
-                    string? reference = row.GetValue(index_Reference, string.Empty);
-                    if (string.IsNullOrWhiteSpace(reference) || !years_ByReference.TryGetValue(reference!, out short year))
-                    {
-                        continue;
-                    }
-
-                    // A reference read twice - overlapping pages, or a county asked for more than once - is one
-                    // building and must not become two rows weighted double in training.
-                    if (!references_Added.Add(reference!))
-                    {
-                        continue;
-                    }
-
-                    List<object?> values = [reference];
-                    for (int j = 0; j < indexes_Input.Count; j++)
-                    {
-                        int index = indexes_Input[j];
-                        object? value = index < 0 ? null : table.GetValue(i, index);
-                        values.Add(value ?? values_Default[j]);
-                    }
-                    values.Add(year);
-
-                    result.AddRow(values);
-                }
+                result.AddRow(values);
             }
 
             return result;

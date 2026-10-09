@@ -16,6 +16,21 @@ public static class Count
 Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') → Count
 ### Fields
 
+<a name='DiGi.GIS.ML.ConsoleApp.Constants.Count.FeatureRow_Maximum'></a>
+
+## Count\.FeatureRow\_Maximum Field
+
+The page size of the keyset\-paged feature read of an unlabelled county \(`--unlabelled`\)\.
+
+A feature page carries the whole Year Built allow-list - well over a hundred columns - so it is kept to a fifth of the label page to keep each response a few megabytes rather than tens.
+
+```csharp
+public const int FeatureRow_Maximum = 1000;
+```
+
+#### Field Value
+[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
+
 <a name='DiGi.GIS.ML.ConsoleApp.Constants.Count.Reference_Maximum'></a>
 
 ## Count\.Reference\_Maximum Field

@@ -18,6 +18,10 @@ using System.Text;
 //
 // --manifest adds a clean-holdout row: the holdout references the YOLO dataset builder flags Legacy = false.
 //
+// The table may carry no 'Year built' label - an unlabelled county written by YearBuiltPredictionTrainingTableConsoleApp
+// --unlabelled. The accuracy section is then skipped and only the plausibility section is reported: how many predictions
+// are later than the building's first confident detection year (ZiolkowskiJakub/DiGi.GIS.ML#14, #15).
+//
 // Exit codes: 0 reported, 1 arguments, 2 the table, a model or the manifest could not be read.
 
 string? path_Table = null;
@@ -78,10 +82,16 @@ if (table is null || table.RowCount == 0)
 int index_Reference = table.GetColumnIndex(DiGi.GIS.IO.Constants.Column.Reference.Name);
 int index_Label = table.GetColumnIndex(DiGi.GIS.ML.Constants.Column.YearBuilt.Name);
 int index_Subdivision = table.GetColumnIndex(DiGi.GIS.IO.Constants.Column.SubdivisionId.Name);
-if (index_Reference < 0 || index_Label < 0)
+if (index_Reference < 0)
 {
-    Console.WriteLine($"[ERROR] the table needs a '{DiGi.GIS.IO.Constants.Column.Reference.Name}' and a '{DiGi.GIS.ML.Constants.Column.YearBuilt.Name}' column.");
+    Console.WriteLine($"[ERROR] the table needs a '{DiGi.GIS.IO.Constants.Column.Reference.Name}' column.");
     return 2;
+}
+
+bool labelled = index_Label >= 0;
+if (!labelled)
+{
+    Console.WriteLine($"[INFO] the table carries no '{DiGi.GIS.ML.Constants.Column.YearBuilt.Name}' label - reporting plausibility only.");
 }
 
 List<double?> years = [];
@@ -91,12 +101,13 @@ for (int i = 0; i < table.RowCount; i++)
 {
     references.Add(table.GetValue<string>(i, index_Reference));
     subdivisions.Add(index_Subdivision < 0 ? null : table.GetValue<string>(i, index_Subdivision));
-    years.Add(table.TryGetValue(i, index_Label, out double year) ? year : null);
+    years.Add(labelled && table.TryGetValue(i, index_Label, out double year) ? year : null);
 }
 
 // Holdout membership is a property of the row, not of a shuffle - see DiGi.GIS.IO.Query.Holdouts.
 Dictionary<string, List<bool>> splits = new()
 {
+    ["all rows"] = references.ConvertAll(x => true),
     ["random 20% (by reference)"] = references.Holdouts(),
     ["grouped 20% (by subdivision)"] = subdivisions.Holdouts(),
 };
@@ -134,8 +145,9 @@ Dictionary<string, List<double?>> predictors = new()
     ["first detection year"] = years_FirstDetection,
 };
 
-// Scored through Query.PredictedYearBuilts - whatever model is installed as OrtoBuildingDetectionModel.mlnet.
-// This row therefore measures the deployed path end to end, binding included, not a particular model.
+// Scored through Query.PredictedYearBuilts - the deployed path end to end. Since ZiolkowskiJakub/DiGi.GIS.ML#15 that is
+// the first-detection heuristic, not a model: it is the bar a retrained model scored by --model has to beat, and it
+// leaves out a building that was never detected, so its n can be smaller than the other rows'.
 Table? table_Incumbent = table.PredictedYearBuilts();
 if (table_Incumbent is not null)
 {
@@ -262,26 +274,76 @@ Emit($"Year Built prediction accuracy - {DateTimeOffset.Now:yyyy-MM-dd HH:mm}");
 Emit($"table: {path_Table}");
 Emit($"rows: {table.RowCount}");
 Emit(string.Empty);
-Emit($"{"split",-30}{"predictor",-28}{"n",8}{"MAE",10}{"RMSE",10}{"R2",10}");
-Emit(new string('-', 96));
+if (labelled)
+{
+    Emit($"{"split",-30}{"predictor",-28}{"n",8}{"MAE",10}{"RMSE",10}{"R2",10}");
+    Emit(new string('-', 96));
+
+    foreach (KeyValuePair<string, List<bool>> split in splits)
+    {
+        foreach (KeyValuePair<string, List<double?>> predictor in predictors)
+        {
+            List<double?> years_Holdout = [];
+            List<double?> years_Predicted_Holdout = [];
+            for (int i = 0; i < table.RowCount && i < split.Value.Count; i++)
+            {
+                if (!split.Value[i]) { continue; }
+                years_Holdout.Add(years[i]);
+                years_Predicted_Holdout.Add(i < predictor.Value.Count ? predictor.Value[i] : null);
+            }
+
+            YearBuiltPredictionAccuracyResult? result = DiGi.GIS.ML.Create.YearBuiltPredictionAccuracyResult(predictor.Key, split.Key, years_Holdout, years_Predicted_Holdout);
+            if (result is null) { continue; }
+
+            Emit($"{split.Key,-30}{predictor.Key,-28}{result.Count,8}{result.MeanAbsoluteError,10:F3}{result.RootMeanSquaredError,10:F3}{result.RSquared,10:F4}");
+        }
+
+        Emit(string.Empty);
+    }
+}
+
+// Plausibility: a building confidently seen in a year cannot have been built after it. The deployed path - the
+// first-detection heuristic - reads 0 here by construction. The retrained row is the raw model scored by --model, and
+// it is the one this section judges: on a county the model was not trained on, it is how ZiolkowskiJakub/DiGi.GIS.ML#15
+// found the regressor dating most buildings years after the imagery first saw them.
+List<int?> years_Confident = table.FirstConfidentDetectionYears();
+int year_FirstImagery = DiGi.GIS.ML.Constants.Plausibility.FirstPredictionYear;
+
+Emit($"Plausibility - predictions later than the first confident detection year (confidence >= {DiGi.GIS.ML.Constants.Plausibility.ConfidentDetectionThreshold.ToString(CultureInfo.InvariantCulture)})");
+Emit(string.Empty);
+Emit($"{"split",-30}{"predictor",-28}{"confident",10}{"later",8}{"share",9}{$"first {year_FirstImagery}",12}{$"> {year_FirstImagery + 1}",8}{"share",9}");
+Emit(new string('-', 114));
 
 foreach (KeyValuePair<string, List<bool>> split in splits)
 {
     foreach (KeyValuePair<string, List<double?>> predictor in predictors)
     {
-        List<double?> years_Holdout = [];
-        List<double?> years_Predicted_Holdout = [];
+        int count_Confident = 0;
+        int count_Later = 0;
+        int count_First = 0;
+        int count_FirstLater = 0;
         for (int i = 0; i < table.RowCount && i < split.Value.Count; i++)
         {
-            if (!split.Value[i]) { continue; }
-            years_Holdout.Add(years[i]);
-            years_Predicted_Holdout.Add(i < predictor.Value.Count ? predictor.Value[i] : null);
+            if (!split.Value[i] || i >= years_Confident.Count || years_Confident[i] is not int year_Confident || i >= predictor.Value.Count || predictor.Value[i] is not double score)
+            {
+                continue;
+            }
+
+            int year_Predicted = score.PredictedYear();
+            count_Confident++;
+            if (year_Predicted > year_Confident) { count_Later++; }
+            if (year_Confident == year_FirstImagery)
+            {
+                count_First++;
+                if (year_Predicted > year_FirstImagery + 1) { count_FirstLater++; }
+            }
         }
 
-        YearBuiltPredictionAccuracyResult? result = DiGi.GIS.ML.Create.YearBuiltPredictionAccuracyResult(predictor.Key, split.Key, years_Holdout, years_Predicted_Holdout);
-        if (result is null) { continue; }
+        if (count_Confident == 0) { continue; }
 
-        Emit($"{split.Key,-30}{predictor.Key,-28}{result.Count,8}{result.MeanAbsoluteError,10:F3}{result.RootMeanSquaredError,10:F3}{result.RSquared,10:F4}");
+        string share_Later = ((double)count_Later / count_Confident).ToString("P1", CultureInfo.InvariantCulture);
+        string share_FirstLater = count_First == 0 ? "-" : ((double)count_FirstLater / count_First).ToString("P1", CultureInfo.InvariantCulture);
+        Emit($"{split.Key,-30}{predictor.Key,-28}{count_Confident,10}{count_Later,8}{share_Later,9}{count_First,12}{count_FirstLater,8}{share_FirstLater,9}");
     }
 
     Emit(string.Empty);
