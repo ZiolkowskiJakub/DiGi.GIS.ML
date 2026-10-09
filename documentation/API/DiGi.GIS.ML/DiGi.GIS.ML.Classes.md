@@ -297,6 +297,8 @@ The first-detection heuristic of [PredictedYearBuilts\(this Table\)](DiGi.GIS.ML
 
 Its contract is the detection years it reads, [Years](DiGi.GIS.ML.Constants.md#DiGi.GIS.ML.Constants.Heuristic.Years 'DiGi\.GIS\.ML\.Constants\.Heuristic\.Years'): a run whose options narrow them would hide a building's first detection and date it late, so the runner refuses such options. No radiuses are stated, and the runner then checks the radial projection against its defaults, as before.
 
+It requires only the [DiGi\.GIS\.IO\.Constants\.YearBuiltPredictionFeatureGroup\.Detection](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.io.constants.yearbuiltpredictionfeaturegroup.detection 'DiGi\.GIS\.IO\.Constants\.YearBuiltPredictionFeatureGroup\.Detection') group: the heuristic reads the detection confidence columns and nothing else, so a county whose population columns are empty still scores rather than being refused (ZiolkowskiJakub/DiGi.GIS.YOLO.UI#27).
+
 ```csharp
 public DiGi.GIS.IO.Classes.YearBuiltPredictorReadiness YearBuiltPredictorReadiness();
 ```
@@ -305,4 +307,4 @@ Implements [YearBuiltPredictorReadiness\(\)](https://learn.microsoft.com/en-us/d
 
 #### Returns
 [DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness](https://learn.microsoft.com/en-us/dotnet/api/digi.gis.io.classes.yearbuiltpredictorreadiness 'DiGi\.GIS\.IO\.Classes\.YearBuiltPredictorReadiness')  
-The readiness of this predictor \- always runnable, with the heuristic's identity and the detection years it reads\.
+The readiness of this predictor \- always runnable, with the heuristic's identity, the detection years it reads, and the detection group it requires\.
